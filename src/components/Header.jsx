@@ -14,8 +14,8 @@ const Header = ({ activeTab, onTabChange }) => {
     <AppBar 
       position="static" 
       sx={{ 
-        bgcolor: 'secondary.main', 
-        color: 'text.primary' 
+        bgcolor: 'primary.main', 
+        color: 'background.default' 
       }}
     >
       <Toolbar>
