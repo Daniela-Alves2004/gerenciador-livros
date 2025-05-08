@@ -8,6 +8,8 @@ Meu Acervo é uma aplicação front-end que permite aos usuários:
 - Buscar livros por título, autor ou assunto
 - Visualizar detalhes completos de cada livro
 
+Link do site: https://gerenciador-livros-4wbyukusz-danialves-projects.vercel.app
+
 ### Demonstração
 Abaixo estão algumas telas da aplicação:
 
