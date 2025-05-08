@@ -1,70 +1,78 @@
-# Getting Started with Create React App
+# Aplicação de Busca de Livros na API do Google Books
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Uma aplicação web desenvolvida em React para buscar, informações sobre livros utilizando a API do Google Books.
 
-## Available Scripts
+## Descrição do Projeto
 
-In the project directory, you can run:
+Meu Acervo é uma aplicação front-end que permite aos usuários:
+- Buscar livros por título, autor ou assunto
+- Visualizar detalhes completos de cada livro
 
-### `npm start`
+## Hooks e Funcionalidades React.js Implementadas
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Hooks Utilizados
+- **useContext e createContext**: Implementados no `BookContext.jsx` para gerenciar o estado global da aplicação e compartilhar dados entre componentes.
+- **useReducer**: Utilizado no `BookContext.jsx` para gerenciar estados complexos através de actions, similar a um estado Redux.
+- **useState**: Implementado em vários componentes como `BookSearch.jsx` para gerenciar estados locais.
+- **useEffect**: Utilizado no componente `BookDetail.jsx` para carregar dados quando o livro selecionado muda.
+- **useTheme e useMediaQuery (MUI)**: Implementados para criar um design responsivo.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### Padrões e Funcionalidades React
+- **Context API**: Implementada através do `BookContext` para gerenciar o estado global da aplicação.
+- **Componentes Funcionais**: Todos os componentes seguem o padrão de componentes funcionais com hooks.
+- **Renderização Condicional**: Utilizada em diversos componentes para mostrar/esconder elementos com base em condições.
+- **Props**: Transferência de dados entre componentes parent-child.
+- **Componentes de Alta Ordem (HOC)**: Implementados com o ThemeProvider do Material UI.
+- **Lifting State Up**: Implementado através do Context para compartilhar estados entre componentes irmãos.
 
-### `npm test`
+## API JSON Utilizada
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Este projeto utiliza a **API Google Books** para busca e exibição de informações sobre livros.
 
-### `npm run build`
+### Endpoints Implementados
+- **Pesquisa de Livros**: `GET /volumes?q={query}&maxResults={maxResults}`
+  - Busca livros com base em uma consulta de texto, limitando os resultados
+  - Implementado na função `searchBooks()` no arquivo `requestApi.js`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **Detalhes do Livro**: `GET /volumes/{bookId}`
+  - Obtém informações detalhadas sobre um livro específico
+  - Implementado na função `getBookDetails()` no arquivo `requestApi.js`
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Tecnologias Utilizadas
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- **React.js**: Biblioteca JavaScript para construção de interfaces de usuário
+- **Material-UI (MUI)**: Framework de componentes React para design consistente
+- **CSS**: Estilização de componentes
+- **Fetch API**: Para requisições HTTP
 
-### `npm run eject`
+## Funcionalidades Desenvolvidas
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+1. **Sistema de Busca**: Interface para pesquisar livros por título, autor ou assunto
+2. **Visualização de Resultados**: Exibição de livros em cards com informações essenciais
+3. **Detalhamento de Livros**: Modal com informações completas sobre o livro selecionado
+4. **UI Responsiva**: Interface adaptável a diferentes tamanhos de tela
+5. **Tema Personalizado**: Implementação de tema visual consistente com MUI
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Como Executar o Projeto
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+1. Clone o repositório
+2. Instale as dependências:
+```
+npm install
+```
+3. Execute o projeto em modo desenvolvimento:
+```
+npm start
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Estrutura do Projeto
 
-## Learn More
+- `src/components`: Componentes React da aplicação
+- `src/contexts`: Contextos React para gerenciamento de estado
+- `src/services`: Serviços para comunicação com APIs externas
+- `src/styles`: Estilos e tema da aplicação
+- `public`: Arquivos estáticos
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Aluno
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Daniela Dos Santos Alves 2465728
