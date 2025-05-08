@@ -53,7 +53,7 @@ const BookDetail = () => {
   };
 
   const formatPublishedDate = (date) => {
-    if (!date) return ' desconhecida';
+    if (!date) return 'Data desconhecida';
     
     if (date.length === 4) return date;
     
