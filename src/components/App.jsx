@@ -4,7 +4,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import BookSearch from './BookSearch';
-
+import BookDetail from './BookDetail';
 import theme from '../styles/theme';
 import Header from './Header';
 import { BookProvider } from '../contexts/BookContext';
@@ -28,7 +28,7 @@ const App = () => {
             {activeTab === 'wantToRead' && <div>container de quero ler</div>}
             {activeTab === 'interested' && <div>container de tenho interresse</div>}
           </Container>
-          <div>detalhes</div>
+            <BookDetail />
         </Box>
       </BookProvider>
     </ThemeProvider>

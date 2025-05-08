@@ -12,6 +12,8 @@ export const ActionTypes = {
   SET_SEARCH_RESULTS: 'SET_SEARCH_RESULTS',
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
+  SELECT_BOOK: 'SELECT_BOOK',
+  CLEAR_SELECTED_BOOK: 'CLEAR_SELECTED_BOOK',
 };
 
 const bookReducer = (state, action) => {
@@ -33,6 +35,16 @@ const bookReducer = (state, action) => {
         ...state,
         error: action.payload,
         isLoading: false
+      };
+    case ActionTypes.SELECT_BOOK:
+      return {
+        ...state,
+        selectedBook: action.payload
+      };
+    case ActionTypes.CLEAR_SELECTED_BOOK:
+      return {
+        ...state,
+        selectedBook: null
       };
     default:
       return state;
