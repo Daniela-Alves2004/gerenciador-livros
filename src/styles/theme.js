@@ -3,19 +3,24 @@ import { createTheme } from "@mui/material";
 const theme = createTheme({
     palette: {
         primary: {
-            main: "#1976d2",
+            main: "#b3a1d4",
         },
         secondary: {
-            main: "#dedcff",
+            main: "#76366e",
         },
         background: {
-            default: "#fbfbfe",
-            paper: "#ffffff",
+            default: "#09060d",
+
         },
         text: {
-            primary: "#050315",
+            primary: "#eae4f3",
+            accent: {
+                main: "#b45b91",
+            },
+
         },
     },
+
     typography: {
         fontFamily: "Inter, sans-serif",
 
