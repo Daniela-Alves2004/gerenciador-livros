@@ -8,6 +8,18 @@ Meu Acervo é uma aplicação front-end que permite aos usuários:
 - Buscar livros por título, autor ou assunto
 - Visualizar detalhes completos de cada livro
 
+### Demonstração
+Abaixo estão algumas telas da aplicação:
+
+Tela de Busca de Livros
+![Captura de tela 2025-05-08 203726](https://github.com/user-attachments/assets/0a849ccf-2123-4870-b5f6-f47c226250e6)
+
+Tela de resultado da busca
+![Captura de tela 2025-05-08 203744](https://github.com/user-attachments/assets/5863ae5e-20e7-4561-b5d0-664ebe37d856)
+
+Detalhes do Livro
+![Captura de tela 2025-05-08 203805](https://github.com/user-attachments/assets/ae701108-7b43-4175-a2f9-8168dcc8e238)
+
 ## Hooks e Funcionalidades React.js Implementadas
 
 ### Hooks Utilizados
