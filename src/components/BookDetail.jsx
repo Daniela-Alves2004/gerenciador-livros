@@ -51,10 +51,9 @@ const BookDetail = () => {
     dispatch({ type: ActionTypes.CLEAR_SELECTED_BOOK });
     setBookDetails(null);
   };
-  
 
   const formatPublishedDate = (date) => {
-    if (!date) return 'Data desconhecida';
+    if (!date) return ' desconhecida';
     
     if (date.length === 4) return date;
     
@@ -65,8 +64,6 @@ const BookDetail = () => {
       return date;
     }
   };
-  
- 
 
   if (!selectedBook) {
     return null;
@@ -177,7 +174,6 @@ const BookDetail = () => {
               )}
             </Grid>
             
-        
             <Grid item xs={12} sm={8} md={9}>
               <Typography variant="h6" gutterBottom sx={{ color: "#09060d" }}>
                 {book.authors ? book.authors.join(', ') : 'Autor Desconhecido'}
