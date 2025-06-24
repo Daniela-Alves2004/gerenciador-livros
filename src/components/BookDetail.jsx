@@ -18,7 +18,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useBookContext } from '../contexts/BookContext';
-import { getBookDetails } from '../services/requestApi';
+import { getBookDetails } from '../contexts/requestApi';
 import { ActionTypes } from '../contexts/BookContext';
 
 

@@ -15,7 +15,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 
 import { useBookContext } from '../contexts/BookContext';
-import { searchBooks } from '../services/requestApi';
+import { searchBooks } from '../contexts/requestApi';
 import { ActionTypes } from '../contexts/BookContext';
 import BookCard from './BookCard';
 

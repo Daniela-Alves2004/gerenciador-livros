@@ -5,7 +5,7 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import BookSearch from './BookSearch';
 import BookDetail from './BookDetail';
-import theme from '../styles/theme';
+import theme from '../contexts/theme';
 import Header from './Header';
 import { BookProvider } from '../contexts/BookContext';
 
