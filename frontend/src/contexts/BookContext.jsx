@@ -1,11 +1,17 @@
-import React, { createContext, useReducer, useContext } from 'react';
+import React, { createContext, useReducer, useContext, useEffect } from 'react';
+import { fetchUserCollection } from './requestApi';
 
 const initialState = {
-  
+  user: null,
+  isAuthenticated: false,
   searchResults: [],
   isLoading: false,
   error: null,
-  selectedBook: null
+  selectedBook: null,
+  collection: {
+    read: [],
+    wantToRead: []
+  }
 };
 
 export const ActionTypes = {
@@ -14,6 +20,12 @@ export const ActionTypes = {
   SET_ERROR: 'SET_ERROR',
   SELECT_BOOK: 'SELECT_BOOK',
   CLEAR_SELECTED_BOOK: 'CLEAR_SELECTED_BOOK',
+  SET_USER: 'SET_USER',
+  LOGOUT: 'LOGOUT',
+  SET_COLLECTION: 'SET_COLLECTION',
+  ADD_BOOK_TO_COLLECTION: 'ADD_BOOK_TO_COLLECTION',
+  REMOVE_BOOK_FROM_COLLECTION: 'REMOVE_BOOK_FROM_COLLECTION',
+  MOVE_BOOK: 'MOVE_BOOK',
 };
 
 const bookReducer = (state, action) => {
@@ -46,6 +58,64 @@ const bookReducer = (state, action) => {
         ...state,
         selectedBook: null
       };
+    case ActionTypes.SET_USER:
+      return {
+        ...state,
+        user: action.payload,
+        isAuthenticated: true,
+        error: null
+      };    case ActionTypes.LOGOUT:
+      return {
+        ...state,
+        user: null,
+        isAuthenticated: false,
+        collection: {
+          read: [],
+          wantToRead: []
+        }
+      };
+    case ActionTypes.SET_COLLECTION:
+      return {
+        ...state,
+        collection: action.payload
+      };
+    case ActionTypes.ADD_BOOK_TO_COLLECTION:
+      return {
+        ...state,
+        collection: {
+          ...state.collection,
+          [action.payload.status]: [
+            ...state.collection[action.payload.status],
+            action.payload.book
+          ]
+        }
+      };
+    case ActionTypes.REMOVE_BOOK_FROM_COLLECTION:
+      return {
+        ...state,
+        collection: {
+          ...state.collection,
+          [action.payload.status]: state.collection[action.payload.status]
+            .filter(book => book.id !== action.payload.bookId)
+        }
+      };
+    case ActionTypes.MOVE_BOOK:
+      const { bookId, fromStatus, toStatus } = action.payload;
+      const bookToMove = state.collection[fromStatus]
+        .find(book => book.id === bookId);
+      
+      return {
+        ...state,
+        collection: {
+          ...state.collection,
+          [fromStatus]: state.collection[fromStatus]
+            .filter(book => book.id !== bookId),
+          [toStatus]: [
+            ...state.collection[toStatus],
+            bookToMove
+          ]
+        }
+      };
     default:
       return state;
     }
@@ -56,6 +126,31 @@ const BookContext = createContext();
 
 export const BookProvider = ({ children }) => {
   const [state, dispatch] = useReducer(bookReducer, initialState);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const savedUser = localStorage.getItem('user');
+      const savedToken = localStorage.getItem('token');
+      
+      if (savedUser && savedToken) {
+        dispatch({ 
+          type: ActionTypes.SET_USER, 
+          payload: JSON.parse(savedUser) 
+        });
+
+        fetchUserCollection(JSON.parse(savedUser).id)
+          .then(collection => {
+            dispatch({
+              type: ActionTypes.SET_COLLECTION,
+              payload: collection
+            });
+          })
+          .catch(err => console.error('Erro', err));
+      }
+    };
+    
+    checkAuth();
+  }, []);
 
   return (
     <BookContext.Provider value={{ state, dispatch }}>

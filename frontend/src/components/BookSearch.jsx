@@ -9,26 +9,43 @@ import {
   Alert,
   Paper,
   InputAdornment,
-  IconButton
+  IconButton,
+  Menu,
+  MenuItem,
+  Card,
+  Snackbar
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 
 import { useBookContext } from '../contexts/BookContext';
-import { searchBooks } from '../contexts/requestApi';
+import { searchBooks, addBook } from '../contexts/requestApi';
 import { ActionTypes } from '../contexts/BookContext';
-import BookCard from './BookCard';
+import BookCardRefactored from './BookCardRefactored';
 
 const BookSearch = () => {
   const { state, dispatch } = useBookContext();
   const [query, setQuery] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  
-  const handleSearch = async (e) => {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+    const handleSearch = async (e) => {
     e.preventDefault();
     
     if (!query || query.trim() === '') {
       setErrorMessage('Por favor, digite algo para buscar.');
+      return;
+    }
+    
+    // Verificar se a busca tem pelo menos 3 caracteres
+    if (query.trim().length < 3) {
+      setErrorMessage('Por favor, digite pelo menos 3 caracteres para buscar.');
       return;
     }
     
@@ -51,6 +68,78 @@ const BookSearch = () => {
     setQuery('');
     dispatch({ type: ActionTypes.SET_SEARCH_RESULTS, payload: [] });
   };
+  
+  const handleMenuOpen = (event, book) => {
+    if (!state.isAuthenticated) {
+      setNotification({
+        open: true,
+        message: 'Faça login para adicionar livros à sua coleção',
+        severity: 'warning'
+      });
+      return;
+    }
+    
+    setAnchorEl(event.currentTarget);
+    setSelectedBook(book);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedBook(null);
+  };
+  
+  const handleAddToCollection = async (status) => {
+    handleMenuClose();
+    
+    if (!selectedBook || !state.user) return;
+    
+    try {
+      dispatch({ type: ActionTypes.SET_LOADING, payload: true });
+      
+      const bookData = {
+        ...selectedBook,
+        userId: state.user.id,
+        status
+      };
+      
+      const result = await addBook(bookData);
+      
+      dispatch({
+        type: ActionTypes.ADD_BOOK_TO_COLLECTION,
+        payload: {
+          book: result,
+          status
+        }
+      });
+      
+      setNotification({
+        open: true,
+        message: `Livro adicionado com sucesso à coleção "${status}"`,
+        severity: 'success'
+      });
+      
+    } catch (error) {
+      setNotification({
+        open: true,
+        message: 'Erro ao adicionar livro à coleção',
+        severity: 'error'
+      });
+    } finally {
+      dispatch({ type: ActionTypes.SET_LOADING, payload: false });
+    }
+  };
+  
+  const handleCloseNotification = () => {
+    setNotification({...notification, open: false});
+  };
+  
+  const handleViewDetails = (book) => {
+    dispatch({
+      type: ActionTypes.SELECT_BOOK,
+      payload: book
+    });
+    handleMenuClose();
+  };
 
   return (
     <Box sx={{ 
@@ -69,8 +158,7 @@ const BookSearch = () => {
         </Typography>
         
         <form onSubmit={handleSearch}>
-          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <TextField
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>            <TextField
               fullWidth
               variant="outlined"
               label="Digite o Título, autor ou assunto"
@@ -79,8 +167,7 @@ const BookSearch = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               error={!!errorMessage}
-              helperText={errorMessage}
-              InputProps={{
+              helperText={errorMessage}              InputProps={{
                 endAdornment: query ? (
                   <InputAdornment position="end">
                     <IconButton onClick={handleClearSearch} edge="end">
@@ -90,11 +177,18 @@ const BookSearch = () => {
                 ) : null,
                 sx: {
                   bgcolor: 'background.paper', 
-                  color: 'background.default',
+                  color: 'secondary.main',
                   borderRadius: 1,
                 }
               }}
-              
+              sx={{
+                '& .MuiInputLabel-root': { color: 'secondary.main' },
+                '& .MuiInputBase-input::placeholder': { color: 'secondary.main', opacity: 0.8 },
+                '& .MuiInputBase-input': { color: 'secondary.main' }
+              }}
+              InputLabelProps={{
+                style: { color: '#76366e' }
+              }}
             />
             <Button 
               type="submit" 
@@ -132,11 +226,43 @@ const BookSearch = () => {
             <>
               <Typography variant="h6" gutterBottom>
                 Resultados da busca
-              </Typography>
-              <Grid container spacing={3}>
+              </Typography>              <Grid container spacing={3}>
                 {state.searchResults.map((book) => (
-                  <Grid item xs={12} sm={6} md={4} lg={3} key={book.id}>
-                    <BookCard book={book} />
+                  <Grid item xs={12} sm={6} md={4} lg={3} key={book.id}>                    <Card 
+                      elevation={3}
+                      sx={{ 
+                        position: 'relative',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        '&:hover .add-book-button': {
+                          opacity: 1,
+                          visibility: 'visible'
+                        }
+                      }}
+                    >
+                      <IconButton
+                        className="add-book-button"
+                        aria-label="adicionar à coleção"
+                        onClick={(e) => handleMenuOpen(e, book)}
+                        sx={{
+                          position: 'absolute',
+                          top: 5,
+                          right: 5,
+                          bgcolor: 'rgba(255,255,255,0.7)',
+                          opacity: 0,
+                          visibility: 'hidden',
+                          transition: 'opacity 0.3s ease, visibility 0.3s ease',
+                          zIndex: 2,
+                          '&:hover': {
+                            bgcolor: 'rgba(255,255,255,0.9)',
+                          }
+                        }}
+                      >
+                        <BookmarkAddIcon />
+                      </IconButton>
+                      <BookCardRefactored book={book} onClick={() => handleViewDetails(book)} />
+                    </Card>
                   </Grid>
                 ))}
               </Grid>
@@ -150,8 +276,70 @@ const BookSearch = () => {
               </Typography>
             </Box>
           )}
-        </>
-      )}
+        </>      )}
+        <Menu
+        id="book-menu"
+        anchorEl={anchorEl}
+        keepMounted
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          elevation: 3,
+          sx: {
+            bgcolor: 'secondary.dark',
+            color: 'background.default',
+            minWidth: '220px',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }
+        }}
+        MenuListProps={{
+          sx: { py: 0 }
+        }}
+      >
+        <MenuItem 
+          onClick={() => handleViewDetails(selectedBook)}
+          sx={{ 
+            py: 1.5,
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            '&:hover': { bgcolor: 'secondary.main' }
+          }}
+        >
+          Ver Detalhes
+        </MenuItem>
+        <MenuItem 
+          onClick={() => handleAddToCollection('read')}
+          sx={{ 
+            py: 1.5,
+            '&:hover': { bgcolor: 'secondary.main' }
+          }}
+        >
+          Adicionar como Lido
+        </MenuItem>        <MenuItem 
+          onClick={() => handleAddToCollection('wantToRead')}
+          sx={{ 
+            py: 1.5,
+            '&:hover': { bgcolor: 'secondary.main' }
+          }}
+        >
+          Adicionar como Quero Ler
+        </MenuItem>
+      </Menu>
+      
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity} 
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

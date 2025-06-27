@@ -12,8 +12,9 @@ import InfoIcon from '@mui/icons-material/Info';
 import { useBookContext } from '../contexts/BookContext';
 import { ActionTypes } from '../contexts/BookContext';
 
-const BookCard = ({ book = true, onClick }) => {
+const BookCardRefactored = ({ book, onClick }) => {
     const { state, dispatch } = useBookContext();
+    
     const handleShowDetails = () => {
         if (onClick) {
             onClick();
@@ -24,11 +25,14 @@ const BookCard = ({ book = true, onClick }) => {
             });
         }
     };
+    
     const truncate = (text, maxLength) => {
         if (!text) return '';
         return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
     };
-    return (        <Box sx={{
+    
+    return (
+        <Box sx={{
             height: 380, 
             width: 250,
             display: 'flex',
@@ -93,7 +97,8 @@ const BookCard = ({ book = true, onClick }) => {
                         '&:hover': {
                             bgcolor: 'text.primary',
                             color: 'background.default'
-                        }                    }}
+                        }
+                    }}
                 >
                     Ver detalhes
                 </Button>
@@ -102,4 +107,4 @@ const BookCard = ({ book = true, onClick }) => {
     );
 };
 
-export default BookCard;
+export default BookCardRefactored;
