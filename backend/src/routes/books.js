@@ -9,7 +9,6 @@ const router = express.Router();
 
 const logger = setupLogger();
 
-// Cache service integrated directly into the routes file
 const nodeCache = new NodeCache({ 
   stdTTL: parseInt(process.env.CACHE_TTL) || 300,
   checkperiod: 60
@@ -65,9 +64,6 @@ const cacheService = {
   }
 };
 
-// Middleware functions moved from middleware and utils folders as per project requirements
-
-// Authentication middleware
 const invalidatedTokens = new Set();
 
 const authMiddleware = async (req, res, next) => {
@@ -152,7 +148,6 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// Validation functions
 const validateFields = (requiredFields) => {
   return (req, res, next) => {
     const missingFields = requiredFields.filter(field => {
@@ -196,7 +191,6 @@ const validateBookStatus = (req, res, next) => {
   next();
 };
 
-// Sanitization functions
 const sanitizeBody = (req, res, next) => {
   if (req.body) {
     req.body = sanitizeObject(req.body);
@@ -239,7 +233,6 @@ const sanitizeObject = (obj) => {
   return sanitized;
 };
 
-// Cache middleware functions
 function cacheBookCollection(ttl = 300) {
   return async (req, res, next) => {
     try {
@@ -284,14 +277,11 @@ function invalidateUserCache(req, res, next) {
   next();
 }
 
-// Routes
-
 router.use(authMiddleware);
 router.use(sanitizeBody);
 router.use(sanitizeParams);
 router.use(sanitizeQuery);
 
-// Get user's book collection controller
 router.get('/collection/:userId', cacheBookCollection(300), async (req, res) => {
   try {
     const { userId } = req.params;
@@ -351,7 +341,6 @@ router.get('/collection/:userId', cacheBookCollection(300), async (req, res) => 
   }
 });
 
-// Search books controller
 router.get('/search', async (req, res) => {
   try {
     const { q, author, year, status } = req.query;
@@ -413,7 +402,6 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// Add book to collection controller
 router.post('/add', 
   validateFields(['title', 'authors']),
   validateBookStatus,
@@ -426,7 +414,6 @@ router.post('/add',
         status: req.body.status || 'wishlist'
       };
 
-      // Verificar se o livro já existe na coleção do usuário
       const existingBook = await Book.findOne({
         where: {
           userId: req.user.id,
@@ -469,7 +456,6 @@ router.post('/add',
   }
 );
 
-// Update book status controller
 router.put('/:id/status', 
   validateFields(['status']),
   validateBookStatus,
@@ -521,7 +507,6 @@ router.put('/:id/status',
   }
 );
 
-// Remove book from collection controller
 router.delete('/:id', invalidateUserCache, async (req, res) => {
   try {
     const { id } = req.params;

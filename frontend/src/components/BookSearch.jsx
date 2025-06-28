@@ -47,7 +47,6 @@ const BookSearch = () => {
       return;
     }
     
-    // Verificar se a busca tem pelo menos 3 caracteres
     if (query.trim().length < 3) {
       setErrorMessage('Por favor, digite pelo menos 3 caracteres para buscar.');
       return;
@@ -59,7 +58,7 @@ const BookSearch = () => {
     try {
       const results = await searchBooks(query);
       dispatch({ type: ActionTypes.SET_SEARCH_RESULTS, payload: results });
-      setPage(1); // Resetar para a primeira página quando fizer uma nova busca
+      setPage(1); 
     } catch (error) {
       dispatch({ 
         type: ActionTypes.SET_ERROR, 

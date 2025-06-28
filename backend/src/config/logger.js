@@ -44,7 +44,7 @@ const setupLogger = () => {
       new winston.transports.File({
         filename: path.join(logDir, 'access.log'),
         level: 'http',
-        maxsize: 5242880, // 5MB
+        maxsize: 5242880,
         maxFiles: 5,
       }),
     ],
@@ -54,7 +54,7 @@ const setupLogger = () => {
   logger.exceptions.handle(
     new winston.transports.File({ 
       filename: path.join(logDir, 'exceptions.log'),
-      maxsize: 5242880, // 5MB
+      maxsize: 5242880,
       maxFiles: 5,
     })
   );

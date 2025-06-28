@@ -66,7 +66,6 @@ const Login = () => {
     setPasswordError('');
     setNameError('');
     
-    // Validações dos campos
     let hasError = false;
 
     if (!email) {
@@ -103,10 +102,8 @@ const Login = () => {
       dispatch({ type: ActionTypes.SET_LOADING, payload: false });    } catch (error) {
       dispatch({ type: ActionTypes.SET_LOADING, payload: false });
       
-      // Tratamento de erros mais detalhado baseado na resposta da API
       const errorMessage = error.message || 'Ocorreu um erro. Por favor, tente novamente.';
       
-      // Verificar se o erro está relacionado a um campo específico
       if (errorMessage.toLowerCase().includes('email')) {
         setEmailError(errorMessage);
       } else if (errorMessage.toLowerCase().includes('senha') || errorMessage.toLowerCase().includes('password')) {

@@ -13,13 +13,11 @@ import Header from './Header';
 import { BookProvider, useBookContext } from '../contexts/BookContext';
 import { Alert, Snackbar } from '@mui/material';
 
-// Componente interno que acessa o contexto
 const AppContent = () => {
   const [activeTab, setActiveTab] = useState('search');
   const { state } = useBookContext();
   const [notification, setNotification] = useState({ open: false, message: '', type: 'info' });
 
-  // Redirecionar para login se tentar acessar páginas protegidas
   useEffect(() => {
     const protectedTabs = ['read', 'wantToRead', 'addBook'];
     
@@ -71,7 +69,6 @@ const AppContent = () => {
   );
 };
 
-// Componente principal que fornece o contexto
 const App = () => {
   return (
     <ThemeProvider theme={theme}>

@@ -13,7 +13,6 @@ const getAuthHeaders = () => {
 
 export const loginUser = async (email, password) => {
   try {
-    // Verificar se o backend está online
     try {
       const response = await fetch(`${BACKEND_API_URL}/auth/login`, {
         method: 'POST',
@@ -24,7 +23,6 @@ export const loginUser = async (email, password) => {
       const data = await response.json();
       
       if (!response.ok) {
-        // Formatação da mensagem de erro baseada na resposta do backend
         let errorMessage = 'Falha no login';
         
         if (data.message) {
@@ -32,7 +30,6 @@ export const loginUser = async (email, password) => {
         }
         
         if (data.errors) {
-          // Se houver detalhes de erro específicos para campos
           if (typeof data.errors === 'object' && data.errors.field) {
             errorMessage += `: ${data.errors.details || `Erro no campo ${data.errors.field}`}`;
           }
@@ -41,24 +38,20 @@ export const loginUser = async (email, password) => {
         throw new Error(errorMessage);
       }
       
-      // Extrair dados da resposta REST padronizada
       const userData = data.data || data;
       
       localStorage.setItem('token', userData.token);
       localStorage.setItem('user', JSON.stringify(userData.user));
-      localStorage.removeItem('demo_mode'); // Garantir que o modo demo esteja desligado
+      localStorage.removeItem('demo_mode');
       
       return userData.user;
     } catch (fetchError) {
       if (fetchError.message && !fetchError.message.includes('fetch failed')) {
-        // Se for um erro de validação ou autenticação, propaga o erro
         throw fetchError;
       }
       
-      // Se ocorrer erro de conexão, usamos modo de demonstração
       console.warn('Servidor backend não disponível. Usando modo de demonstração.', fetchError);
       
-      // Criando usuário demo para fins de teste
       const demoUser = {
         id: 'demo-user-123',
         name: email.split('@')[0] || 'Usuário Demo',
@@ -81,7 +74,6 @@ export const loginUser = async (email, password) => {
 
 export const registerUser = async (name, email, password) => {
   try {
-    // Verificar se o backend está online
     try {
       const response = await fetch(`${BACKEND_API_URL}/auth/register`, {
         method: 'POST',
@@ -92,7 +84,6 @@ export const registerUser = async (name, email, password) => {
       const data = await response.json();
       
       if (!response.ok) {
-        // Formatação da mensagem de erro baseada na resposta do backend
         let errorMessage = 'Falha no cadastro';
         
         if (data.message) {
@@ -100,11 +91,9 @@ export const registerUser = async (name, email, password) => {
         }
         
         if (data.errors) {
-          // Se houver detalhes de erro específicos para campos
           if (typeof data.errors === 'object' && data.errors.field) {
             errorMessage += `: ${data.errors.details || `Erro no campo ${data.errors.field}`}`;
           } else if (typeof data.errors === 'object') {
-            // Se houver múltiplos erros de validação
             const errorFields = Object.keys(data.errors).join(', ');
             errorMessage += `: Problemas nos campos: ${errorFields}`;
           }
@@ -113,24 +102,20 @@ export const registerUser = async (name, email, password) => {
         throw new Error(errorMessage);
       }
 
-      // Extrair dados da resposta REST padronizada
       const userData = data.data || data;
       
       localStorage.setItem('token', userData.token);
       localStorage.setItem('user', JSON.stringify(userData.user));
-      localStorage.removeItem('demo_mode'); // Garantir que o modo demo esteja desligado
+      localStorage.removeItem('demo_mode'); 
       
       return userData.user;
     } catch (fetchError) {
       if (fetchError.message && !fetchError.message.includes('fetch failed')) {
-        // Se for um erro de validação ou autenticação, propaga o erro
         throw fetchError;
       }
       
-      // Se ocorrer erro de conexão, usamos modo de demonstração
       console.warn('Servidor backend não disponível. Usando modo de demonstração.', fetchError);
       
-      // Criando usuário demo para fins de teste
       const demoUser = {
         id: 'demo-user-' + Date.now(),
         name: name || email.split('@')[0] || 'Usuário Demo',
@@ -158,7 +143,6 @@ export const logoutUser = () => {
 
 export const fetchUserCollection = async (userId) => {
   try {
-    // Verificar se o token existe
     const token = getAuthToken();
     if (!token) {
       throw new Error('Usuário não autenticado. Por favor, faça login.');
@@ -171,15 +155,12 @@ export const fetchUserCollection = async (userId) => {
     const data = await response.json();
     
     if (!response.ok) {
-      // Extrair a mensagem de erro específica da resposta da API
       const errorMessage = data.message || 'Falha ao buscar coleção';
       throw new Error(errorMessage);
     }
     
-    // Processar os dados retornados
     const responseData = data.data || data;
     
-    // Mesclando os livros da categoria "interested" com "wantToRead"
     const mergedWantToRead = [
       ...(responseData.wantToRead || []), 
       ...(responseData.interested || [])
@@ -206,7 +187,6 @@ export const addBook = async (bookData) => {
     const data = await response.json();
 
     if (!response.ok) {
-      // Extrair a mensagem de erro específica da resposta da API
       const errorMessage = data.message || 'Falha ao adicionar livro';
       const errorDetails = data.errors ? `: ${JSON.stringify(data.errors)}` : '';
       throw new Error(`${errorMessage}${errorDetails}`);
@@ -230,7 +210,6 @@ export const removeBook = async (bookId, userId) => {
     const data = await response.json();
 
     if (!response.ok) {
-      // Extrair a mensagem de erro específica da resposta da API
       const errorMessage = data.message || 'Falha ao remover livro';
       throw new Error(errorMessage);
     }
@@ -253,7 +232,6 @@ export const updateBookStatus = async (bookId, userId, status) => {
     const data = await response.json();
 
     if (!response.ok) {
-      // Extrair a mensagem de erro específica da resposta da API
       const errorMessage = data.message || 'Falha ao atualizar status do livro';
       throw new Error(errorMessage);
     }

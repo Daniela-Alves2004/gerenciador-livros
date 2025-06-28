@@ -7,9 +7,6 @@ const router = express.Router();
 
 const logger = setupLogger();
 
-// Middleware functions moved from middleware and utils folders as per project requirements
-
-// Authentication middleware
 const invalidatedTokens = new Set();
 
 const authMiddleware = async (req, res, next) => {
@@ -131,7 +128,6 @@ const invalidateToken = (token) => {
   return true;
 };
 
-// Validation functions
 const validateFields = (requiredFields) => {
   return (req, res, next) => {
     const missingFields = requiredFields.filter(field => {
@@ -228,7 +224,6 @@ const validatePassword = (req, res, next) => {
   next();
 };
 
-// Sanitization functions
 const sanitizeBody = (req, res, next) => {
   if (req.body) {
     req.body = sanitizeObject(req.body);
@@ -257,11 +252,8 @@ const sanitizeObject = (obj) => {
   return sanitized;
 };
 
-// Routes
-
 router.use(sanitizeBody);
 
-// Login controller
 router.post('/login', 
   validateFields(['email', 'password']), 
   validateEmail,
@@ -355,7 +347,6 @@ router.post('/login',
   }
 );
 
-// Register controller
 router.post('/register', 
   validateFields(['email', 'password', 'name']),
   validateEmail,
@@ -428,7 +419,6 @@ router.post('/register',
   }
 );
 
-// Logout controller
 router.post('/logout', authMiddleware, async (req, res) => {
   try {
     const token = req.token;
@@ -463,7 +453,6 @@ router.post('/logout', authMiddleware, async (req, res) => {
   }
 });
 
-// Verify token controller
 router.get('/verify', authMiddleware, async (req, res) => {
   try {
     res.status(200).json({

@@ -25,7 +25,7 @@ const BookInsert = () => {
     categories: '',
     coverUrl: '',
     language: '',
-    status: 'wantToRead' // Default status: read, wantToRead
+    status: 'wantToRead' 
   };
   
   const [formData, setFormData] = useState(initialFormState);
@@ -56,7 +56,7 @@ const BookInsert = () => {
       const bookData = {
         ...formData,
         pageCount: formData.pageCount ? parseInt(formData.pageCount) : 0,
-        authors: [formData.author], // Convert to array for API consistency
+        authors: [formData.author], 
         userId: state.user?.id
       };
       
@@ -71,7 +71,7 @@ const BookInsert = () => {
       });
       
       setSuccess('Livro adicionado com sucesso!');
-      setFormData(initialFormState); // Reset form
+      setFormData(initialFormState);
       
     } catch (error) {
       setError(error.message || 'Erro ao adicionar o livro. Por favor, tente novamente.');
