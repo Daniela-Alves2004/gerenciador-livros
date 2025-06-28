@@ -8,7 +8,7 @@ const hpp = require('hpp');
 const fs = require('fs');
 const https = require('https');
 const path = require('path');
-const { connectDB } = require('./config/database');
+const { connectDB, closeDB, healthCheck, getPoolStats } = require('./config/database');
 const restResponse = require('./middleware/restResponse');
 const { setupLogger } = require('./config/logger');
 const { preventSQLInjection } = require('./middleware/validateData');
@@ -90,6 +90,62 @@ app.get('/api/cache/stats', async (req, res) => {
   }
 });
 
+app.get('/api/database/stats', async (req, res) => {
+  try {
+    const poolStats = getPoolStats();
+    const isHealthy = await healthCheck();
+    
+    const stats = {
+      pool: poolStats,
+      healthy: isHealthy,
+      timestamp: new Date().toISOString()
+    };
+    
+    res.ok(stats, 'Estatísticas do banco de dados obtidas com sucesso');
+  } catch (error) {
+    logger.error(`Erro ao obter estatísticas do banco: ${error.message}`);
+    res.serverError(error, 'Erro ao obter estatísticas do banco de dados');
+  }
+});
+
+app.get('/api/system/health', async (req, res) => {
+  try {
+    const [dbHealth, cacheStats] = await Promise.all([
+      healthCheck(),
+      cacheService.getStats()
+    ]);
+    
+    const systemHealth = {
+      database: {
+        healthy: dbHealth,
+        pool: getPoolStats()
+      },
+      cache: cacheStats,
+      server: {
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        version: process.version
+      },
+      timestamp: new Date().toISOString()
+    };
+    
+    const overallHealth = dbHealth && cacheStats.connected;
+    
+    if (overallHealth) {
+      res.ok(systemHealth, 'Sistema funcionando corretamente');
+    } else {
+      res.status(503).json({
+        success: false,
+        message: 'Problemas detectados no sistema',
+        data: systemHealth
+      });
+    }
+  } catch (error) {
+    logger.error(`Erro na verificação de saúde do sistema: ${error.message}`);
+    res.serverError(error, 'Erro na verificação de saúde do sistema');
+  }
+});
+
 if (process.env.NODE_ENV !== 'production') {
   app.delete('/api/cache/flush', async (req, res) => {
     try {
@@ -141,13 +197,19 @@ const PORT = process.env.PORT || 3001;
 
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM recebido, encerrando servidor...');
-  await cacheService.close();
+  await Promise.all([
+    cacheService.close(),
+    closeDB()
+  ]);
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   logger.info('SIGINT recebido, encerrando servidor...');
-  await cacheService.close();
+  await Promise.all([
+    cacheService.close(),
+    closeDB()
+  ]);
   process.exit(0);
 });
 
