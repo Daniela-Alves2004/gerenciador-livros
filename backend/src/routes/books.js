@@ -5,6 +5,7 @@ const { authMiddleware } = require('../middleware/authMiddleware');
 const validateFields = require('../middleware/validateFields');
 const { validateBookId, validateBookStatus } = require('../middleware/validateData');
 const { sanitizeBody, sanitizeParams, sanitizeQuery, validate, validateBook } = require('../middleware/sanitizeData');
+const { cacheBookCollection, cacheBook, invalidateUserCache, invalidateBookCache } = require('../middleware/cacheMiddleware');
 const { setupLogger } = require('../config/logger');
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.use(sanitizeBody);
 router.use(sanitizeParams);
 router.use(sanitizeQuery);
 
-router.get('/collection/:userId', async (req, res) => {
+router.get('/collection/:userId', cacheBookCollection(300), async (req, res) => {
   try {
     const { userId } = req.params;
     
@@ -51,7 +52,36 @@ router.get('/collection/:userId', async (req, res) => {
   }
 });
 
+router.get('/:id', 
+  cacheBook(600),
+  validateBookId,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const book = await Book.findByPk(id);
+      
+      if (!book) {
+        logger.warn(`Tentativa de buscar livro inexistente: ${id}`);
+        return res.notFound('Livro não encontrado');
+      }
+      
+      if (book.userId !== req.user.id) {
+        logger.warn(`Tentativa de acessar livro de outro usuário: ${id} por ${req.user.id}`);
+        return res.forbidden('Você não tem permissão para acessar este livro');
+      }
+      
+      logger.info(`Livro acessado: ${id} por ${req.user.id}`);
+      res.ok(book, 'Livro encontrado com sucesso');
+    } catch (error) {
+      logger.error(`Erro ao buscar livro: ${error.message}`, { stack: error.stack });
+      res.serverError(error, 'Erro ao buscar livro');
+    }
+  }
+);
+
 router.post('/', 
+  invalidateUserCache,
   validateFields(['title', 'author', 'status']),
   validate(validateBook),
   validateBookStatus,
@@ -95,6 +125,7 @@ router.post('/',
 );
 
 router.put('/:id',
+  invalidateBookCache,
   validateBookId,
   validate(validateBook),
   validateBookStatus,
@@ -126,6 +157,7 @@ router.put('/:id',
 );
 
 router.delete('/:id',
+  invalidateBookCache,
   validateBookId,
   async (req, res) => {
     try {

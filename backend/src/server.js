@@ -12,6 +12,7 @@ const { connectDB } = require('./config/database');
 const restResponse = require('./middleware/restResponse');
 const { setupLogger } = require('./config/logger');
 const { preventSQLInjection } = require('./middleware/validateData');
+const cacheService = require('./services/cacheService');
 require('dotenv').config();
 
 const logger = setupLogger();
@@ -20,6 +21,8 @@ const authRoutes = require('./routes/auth');
 const bookRoutes = require('./routes/books');
 
 const app = express();
+
+app.locals.cacheService = cacheService;
 
 connectDB();
 
@@ -77,6 +80,28 @@ app.get('/api/health', (req, res) => {
   res.ok({ status: 'online', timestamp: new Date() }, 'API está funcionando corretamente');
 });
 
+app.get('/api/cache/stats', async (req, res) => {
+  try {
+    const stats = await cacheService.getStats();
+    res.ok(stats, 'Estatísticas do cache obtidas com sucesso');
+  } catch (error) {
+    logger.error(`Erro ao obter estatísticas do cache: ${error.message}`);
+    res.serverError(error, 'Erro ao obter estatísticas do cache');
+  }
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  app.delete('/api/cache/flush', async (req, res) => {
+    try {
+      await cacheService.flush();
+      res.ok(null, 'Cache limpo com sucesso');
+    } catch (error) {
+      logger.error(`Erro ao limpar cache: ${error.message}`);
+      res.serverError(error, 'Erro ao limpar cache');
+    }
+  });
+}
+
 app.use((req, res) => {
   logger.warn(`Rota não encontrada: ${req.originalUrl}`);
   res.notFound('Rota não encontrada');
@@ -113,6 +138,18 @@ app.use((err, req, res, next) => {
 
 
 const PORT = process.env.PORT || 3001;
+
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM recebido, encerrando servidor...');
+  await cacheService.close();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT recebido, encerrando servidor...');
+  await cacheService.close();
+  process.exit(0);
+});
 
 if (process.env.NODE_ENV === 'production') {
   try {
