@@ -1,50 +1,113 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const connectDB = require('./config/database');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const hpp = require('hpp');
+const fs = require('fs');
+const https = require('https');
+const path = require('path');
+const { connectDB } = require('./config/database');
 const restResponse = require('./middleware/restResponse');
+const { setupLogger } = require('./config/logger');
+const { preventSQLInjection } = require('./middleware/validateData');
 require('dotenv').config();
 
-// Importar rotas
+const logger = setupLogger();
+
 const authRoutes = require('./routes/auth');
 const bookRoutes = require('./routes/books');
 
-// Inicializar aplicação Express
 const app = express();
 
-// Conectar ao banco de dados
 connectDB();
 
-// Middlewares
-app.use(express.json());
-app.use(cors());
-app.use(morgan('dev')); // Logging de requisições
-app.use(restResponse); // Respostas REST padronizadas
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Muitas requisições deste IP, tente novamente após 15 minutos'
+});
 
-// Registrar rotas
+app.use(helmet()); 
+app.use(express.json({ limit: '10kb' })); 
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+app.use(hpp()); 
+app.use('/api/', limiter); 
+
+app.use(preventSQLInjection);
+
+app.use(morgan('combined')); 
+app.use(restResponse); 
+
 app.use('/api/auth', authRoutes);
 app.use('/api/books', bookRoutes);
 
-// Rota de teste para verificar se a API está funcionando
 app.get('/api/health', (req, res) => {
   res.ok({ status: 'online', timestamp: new Date() }, 'API está funcionando corretamente');
 });
 
-// Tratamento de rotas não encontradas
 app.use((req, res) => {
+  logger.warn(`Rota não encontrada: ${req.originalUrl}`);
   res.notFound('Rota não encontrada');
 });
 
-// Tratamento global de erros
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  if (err.name === 'SequelizeDatabaseError') {
+    logger.error(`Erro de banco de dados SQLite: ${err.message}`, { 
+      stack: err.stack,
+      sql: err.sql || 'SQL não disponível'
+    });
+    return res.serverError(null, 'Erro ao processar a operação no banco de dados');
+  }
+  
+  if (err.name === 'SequelizeValidationError') {
+    const validationErrors = err.errors.map(e => ({
+      field: e.path,
+      message: e.message
+    }));
+    
+    logger.warn('Erro de validação:', { errors: validationErrors });
+    return res.badRequest({ errors: validationErrors }, 'Erro de validação');
+  }
+
+  if (err.name === 'SequelizeUniqueConstraintError') {
+    const field = err.errors[0]?.path || 'campo';
+    logger.warn(`Violação de unicidade: ${field}`);
+    return res.conflict(`O valor fornecido para ${field} já está em uso`);
+  }
+  
+  logger.error(`Erro: ${err.message}, Stack: ${err.stack}`);
   res.serverError(err, 'Erro interno do servidor');
 });
 
-// Definir porta e iniciar servidor
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-});
+
+if (process.env.NODE_ENV === 'production') {
+  try {
+    const privateKey = fs.readFileSync(path.join(__dirname, '../ssl/private-key.pem'), 'utf8');
+    const certificate = fs.readFileSync(path.join(__dirname, '../ssl/certificate.pem'), 'utf8');
+    const credentials = { key: privateKey, cert: certificate };
+    
+    const httpsServer = https.createServer(credentials, app);
+    httpsServer.listen(PORT, () => {
+      logger.info(`Servidor HTTPS rodando na porta ${PORT}`);
+    });
+  } catch (error) {
+    logger.error(`Erro ao iniciar servidor HTTPS: ${error.message}`);
+    app.listen(PORT, () => {
+      logger.warn(`Servidor HTTP rodando na porta ${PORT} (fallback)`);
+    });
+  }
+} else {
+  app.listen(PORT, () => {
+    logger.info(`Servidor HTTP rodando na porta ${PORT} (desenvolvimento)`);
+  });
+}
 
 module.exports = app;
