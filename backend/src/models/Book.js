@@ -1,75 +1,124 @@
-const mongoose = require('mongoose');
+const { DataTypes, Model } = require('sequelize');
+const { sequelize } = require('../config/database');
+const User = require('./User');
 
-const bookSchema = new mongoose.Schema({
-  id: {
-    type: String,
-    required: true
+class Book extends Model {}
+
+Book.init({
+  googleBookId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'ID do livro na API do Google Books'
   },
   title: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  authors: {
-    type: [String],
-    default: ['Autor desconhecido']
-  },
-  description: {
-    type: String,
-    default: 'Nenhuma descrição disponível'
-  },
-  publishedDate: {
-    type: String
-  },
-  imageLinks: {
-    type: Object,
-    default: {
-      thumbnail: 'https://via.placeholder.com/128x192?text=No+Cover'
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      notEmpty: { msg: 'O título é obrigatório' }
     }
   },
+  author: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      notEmpty: { msg: 'O autor é obrigatório' }
+    }
+  },
+  description: {
+    type: DataTypes.TEXT,
+    defaultValue: 'Nenhuma descrição disponível'
+  },
+  publishedDate: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  isbn: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  coverImage: {
+    type: DataTypes.STRING,
+    defaultValue: 'https://via.placeholder.com/128x192?text=No+Cover'
+  },
   categories: {
-    type: [String],
-    default: []
+    type: DataTypes.STRING, 
+    allowNull: true,
+    get() {
+      const value = this.getDataValue('categories');
+      return value ? JSON.parse(value) : [];
+    },
+    set(value) {
+      this.setDataValue('categories', value ? JSON.stringify(value) : null);
+    }
   },
   pageCount: {
-    type: Number,
-    default: 0
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    validate: {
+      isInt: true,
+      min: 0
+    }
   },
   language: {
-    type: String,
-    default: 'Sem idioma definido'
-  },
-  averageRating: {
-    type: Number,
-    default: 0
-  },
-  ratingsCount: {
-    type: Number,
-    default: 0
-  },
-  previewLink: {
-    type: String,
-    default: ''
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    type: DataTypes.STRING,
+    allowNull: true
   },
   status: {
-    type: String,
-    enum: ['read', 'wantToRead'],
-    default: 'wantToRead'
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'wishlist',
+    validate: {
+      isIn: {
+        args: [['wishlist', 'reading', 'finished']],
+        msg: 'Status deve ser wishlist, reading ou finished'
+      }
+    }
   },
-  addedAt: {
-    type: Date,
-    default: Date.now
+  rating: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    validate: {
+      min: 0,
+      max: 5
+    }
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  startDate: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  finishDate: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
   }
+}, {
+  sequelize,
+  modelName: 'Book',
+  tableName: 'books',
+  timestamps: true, 
+  paranoid: true, 
+  indexes: [
+    {
+      fields: ['userId']
+    },
+    {
+      fields: ['status']
+    }
+  ]
 });
 
-// Índices compostos para evitar duplicação de livros por usuário
-bookSchema.index({ id: 1, userId: 1 }, { unique: true });
-
-const Book = mongoose.model('Book', bookSchema);
+Book.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(Book, { foreignKey: 'userId' });
 
 module.exports = Book;

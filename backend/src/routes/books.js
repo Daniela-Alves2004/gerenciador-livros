@@ -1,174 +1,157 @@
 const express = require('express');
+const { Op } = require('sequelize');
 const Book = require('../models/Book');
-const authMiddleware = require('../middleware/authMiddleware');
+const { authMiddleware } = require('../middleware/authMiddleware');
 const validateFields = require('../middleware/validateFields');
 const { validateBookId, validateBookStatus } = require('../middleware/validateData');
+const { sanitizeBody, sanitizeParams, sanitizeQuery, validate, validateBook } = require('../middleware/sanitizeData');
+const { setupLogger } = require('../config/logger');
 const router = express.Router();
 
-// Aplicar o middleware de autenticação a todas as rotas
-router.use(authMiddleware);
+const logger = setupLogger();
 
-// Buscar coleção de livros do usuário
+router.use(authMiddleware);
+router.use(sanitizeBody);
+router.use(sanitizeParams);
+router.use(sanitizeQuery);
+
 router.get('/collection/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
-    // Verificação de parâmetro userId
-    if (!userId || userId.trim() === '') {
+    if (!userId || userId.toString().trim() === '') {
+      logger.warn('Tentativa de acesso com ID de usuário inválido');
       return res.badRequest({
         field: 'userId',
         details: 'ID de usuário inválido'
       }, 'ID de usuário inválido');
     }
     
-    // Verificar se o usuário que fez a requisição é o mesmo da coleção
-    if (req.user.id.toString() !== userId) {
+    if (req.user.id.toString() !== userId.toString()) {
+      logger.warn(`Tentativa de acesso não autorizado à coleção: ${userId} por ${req.user.id}`);
       return res.forbidden('Você não tem permissão para acessar a coleção de outro usuário');
     }
     
-    // Buscar livros do usuário agrupados por status
-    const books = await Book.find({ userId });
+    const books = await Book.findAll({
+      where: { userId: userId },
+      order: [['createdAt', 'DESC']]
+    });
     
-    // Agrupar livros por status
-    const collection = books.reduce((acc, book) => {
-      if (!acc[book.status]) {
-        acc[book.status] = [];
-      }
-      acc[book.status].push(book);
-      return acc;
-    }, { read: [], wantToRead: [] });
+    const collection = {
+      wishlist: books.filter(book => book.status === 'wishlist'),
+      reading: books.filter(book => book.status === 'reading'),
+      finished: books.filter(book => book.status === 'finished')
+    };
     
-    return res.ok(collection, 'Coleção de livros recuperada com sucesso');
+    logger.info(`Coleção de livros acessada: ${userId}`);
+    res.ok(collection, 'Coleção de livros recuperada com sucesso');
   } catch (error) {
-    console.error('Erro ao buscar coleção:', error);
-    return res.serverError(error, 'Erro ao buscar coleção de livros');
+    logger.error(`Erro ao buscar coleção de livros: ${error.message}`, { stack: error.stack });
+    res.serverError(error, 'Erro ao buscar coleção de livros');
   }
 });
 
-// Adicionar livro à coleção
-router.post('/', validateFields(['id', 'title', 'userId']), async (req, res) => {
-  try {
-    const bookData = req.body;
-    
-    // Validações adicionais dos dados
-    if (!bookData.authors || bookData.authors.length === 0) {
-      bookData.authors = ['Autor desconhecido'];
-    }
-    
-    // Verificar se o userId da requisição corresponde ao usuário autenticado
-    if (req.user.id.toString() !== bookData.userId) {
-      return res.forbidden('Você não tem permissão para adicionar livros para outro usuário');
-    }
-      // Verificar se o livro já existe na coleção do usuário
-    const existingBook = await Book.findOne({ id: bookData.id, userId: bookData.userId });
-    
-    if (existingBook) {
-      return res.badRequest({
-        field: 'id',
-        details: 'Este livro já está na sua coleção',
-        bookId: existingBook.id,
-        status: existingBook.status
-      }, 'Livro já existe na coleção');
-    }
-    
-    // Criar novo livro
-    const book = new Book(bookData);
-    await book.save();
-    
-    return res.created(book, 'Livro adicionado com sucesso à coleção');
-  } catch (error) {
-    console.error('Erro ao adicionar livro:', error);
-    
-    // Verificar se é um erro de validação do Mongoose
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).reduce((acc, err) => {
-        acc[err.path] = err.message;
-        return acc;
-      }, {});
+router.post('/', 
+  validateFields(['title', 'author', 'status']),
+  validate(validateBook),
+  validateBookStatus,
+  async (req, res) => {
+    try {
+      const { title, author, isbn, coverImage, description, year, status } = req.body;
       
-      return res.badRequest(errors, 'Dados do livro inválidos');
+      const existingBook = await Book.findOne({ 
+        where: { 
+          [Op.and]: [
+            { title },
+            { author },
+            { userId: req.user.id }
+          ]
+        }
+      });
+      
+      if (existingBook) {
+        logger.info(`Tentativa de adicionar livro duplicado: ${title} por ${req.user.id}`);
+        return res.conflict('Este livro já existe em sua coleção');
+      }
+      
+      const newBook = await Book.create({
+        title,
+        author,
+        isbn,
+        coverImage,
+        description,
+        year,
+        status,
+        userId: req.user.id
+      });
+      
+      logger.info(`Livro adicionado: ${title} por ${req.user.id}`);
+      res.created(newBook, 'Livro adicionado com sucesso');
+    } catch (error) {
+      logger.error(`Erro ao adicionar livro: ${error.message}`, { stack: error.stack });
+      res.serverError(error, 'Erro ao adicionar livro');
     }
-    
-    return res.serverError(error, 'Erro ao adicionar livro');
   }
-});
+);
 
-// Remover livro da coleção
-router.delete('/:bookId', validateBookId, validateFields(['userId']), async (req, res) => {
-  try {
-    const { bookId } = req.params;
-    const { userId } = req.body;
-    
-    // Verificar se o userId da requisição corresponde ao usuário autenticado
-    if (req.user.id.toString() !== userId) {
-      return res.forbidden('Você não tem permissão para remover livros de outro usuário');
+router.put('/:id',
+  validateBookId,
+  validate(validateBook),
+  validateBookStatus,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const book = await Book.findByPk(id);
+      
+      if (!book) {
+        logger.warn(`Tentativa de atualizar livro inexistente: ${id}`);
+        return res.notFound('Livro não encontrado');
+      }
+      
+      if (book.userId !== req.user.id) {
+        logger.warn(`Tentativa de atualizar livro de outro usuário: ${id} por ${req.user.id}`);
+        return res.forbidden('Você não tem permissão para editar este livro');
+      }
+      
+      await book.update(req.body);
+      
+      logger.info(`Livro atualizado: ${id} por ${req.user.id}`);
+      res.ok(book, 'Livro atualizado com sucesso');
+    } catch (error) {
+      logger.error(`Erro ao atualizar livro: ${error.message}`, { stack: error.stack });
+      res.serverError(error, 'Erro ao atualizar livro');
     }
-    
-    // Buscar e remover o livro
-    const book = await Book.findOneAndDelete({ id: bookId, userId });
-    
-    if (!book) {
-      return res.notFound('Livro não encontrado na sua coleção');
-    }
-    
-    return res.ok({ 
-      id: book.id, 
-      title: book.title,
-      status: book.status 
-    }, 'Livro removido com sucesso');
-  } catch (error) {
-    console.error('Erro ao remover livro:', error);
-    return res.serverError(error, 'Erro ao remover livro da coleção');
   }
-});
+);
 
-// Buscar um livro específico da coleção
-router.get('/:bookId', validateBookId, async (req, res) => {
-  try {
-    const { bookId } = req.params;
-    const userId = req.user.id;
-    
-    // Buscar o livro
-    const book = await Book.findOne({ id: bookId, userId });
-    
-    if (!book) {
-      return res.notFound('Livro não encontrado na sua coleção');
+router.delete('/:id',
+  validateBookId,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const book = await Book.findByPk(id);
+      
+      if (!book) {
+        logger.warn(`Tentativa de remover livro inexistente: ${id}`);
+        return res.notFound('Livro não encontrado');
+      }
+      
+      if (book.userId !== req.user.id) {
+        logger.warn(`Tentativa de remover livro de outro usuário: ${id} por ${req.user.id}`);
+        return res.forbidden('Você não tem permissão para remover este livro');
+      }
+      
+      await book.destroy();
+      
+      logger.info(`Livro removido: ${id} por ${req.user.id}`);
+      res.ok(null, 'Livro removido com sucesso');
+    } catch (error) {
+      logger.error(`Erro ao remover livro: ${error.message}`, { stack: error.stack });
+      res.serverError(error, 'Erro ao remover livro');
     }
-    
-    return res.ok(book, 'Livro encontrado');
-  } catch (error) {
-    console.error('Erro ao buscar livro:', error);
-    return res.serverError(error, 'Erro ao buscar detalhes do livro');
   }
-});
-
-// Atualizar status do livro
-router.put('/:bookId/status', validateBookId, validateFields(['userId', 'status']), validateBookStatus, async (req, res) => {
-  try {
-    const { bookId } = req.params;
-    const { userId, status } = req.body;
-    
-    // Verificar se o userId da requisição corresponde ao usuário autenticado
-    if (req.user.id.toString() !== userId) {
-      return res.forbidden('Você não tem permissão para atualizar livros de outro usuário');
-    }
-    
-    // Buscar e atualizar o livro
-    const book = await Book.findOneAndUpdate(
-      { id: bookId, userId },
-      { status },
-      { new: true }
-    );
-    
-    if (!book) {
-      return res.notFound('Livro não encontrado na sua coleção');
-    }
-    
-    return res.ok(book, `Status do livro atualizado para "${status}"`);
-  } catch (error) {
-    console.error('Erro ao atualizar status do livro:', error);
-    return res.serverError(error, 'Erro ao atualizar status do livro');
-  }
-});
+);
 
 module.exports = router;
