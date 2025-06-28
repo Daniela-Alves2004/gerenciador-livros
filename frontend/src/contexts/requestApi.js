@@ -21,18 +21,40 @@ export const loginUser = async (email, password) => {
         body: JSON.stringify({ email, password })
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Falha no login');
-      }
-
       const data = await response.json();
       
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      if (!response.ok) {
+        // Formatação da mensagem de erro baseada na resposta do backend
+        let errorMessage = 'Falha no login';
+        
+        if (data.message) {
+          errorMessage = data.message;
+        }
+        
+        if (data.errors) {
+          // Se houver detalhes de erro específicos para campos
+          if (typeof data.errors === 'object' && data.errors.field) {
+            errorMessage += `: ${data.errors.details || `Erro no campo ${data.errors.field}`}`;
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
       
-      return data.user;
+      // Extrair dados da resposta REST padronizada
+      const userData = data.data || data;
+      
+      localStorage.setItem('token', userData.token);
+      localStorage.setItem('user', JSON.stringify(userData.user));
+      localStorage.removeItem('demo_mode'); // Garantir que o modo demo esteja desligado
+      
+      return userData.user;
     } catch (fetchError) {
+      if (fetchError.message && !fetchError.message.includes('fetch failed')) {
+        // Se for um erro de validação ou autenticação, propaga o erro
+        throw fetchError;
+      }
+      
       // Se ocorrer erro de conexão, usamos modo de demonstração
       console.warn('Servidor backend não disponível. Usando modo de demonstração.', fetchError);
       
@@ -53,7 +75,7 @@ export const loginUser = async (email, password) => {
     }
   } catch (error) {
     console.error('Erro no login:', error);
-    throw new Error('Erro ao fazer login. Verifique suas credenciais ou tente novamente mais tarde.');
+    throw error;
   }
 };
 
@@ -67,18 +89,44 @@ export const registerUser = async (name, email, password) => {
         body: JSON.stringify({ name, email, password })
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Falha no cadastro');
-      }
-
       const data = await response.json();
       
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      if (!response.ok) {
+        // Formatação da mensagem de erro baseada na resposta do backend
+        let errorMessage = 'Falha no cadastro';
+        
+        if (data.message) {
+          errorMessage = data.message;
+        }
+        
+        if (data.errors) {
+          // Se houver detalhes de erro específicos para campos
+          if (typeof data.errors === 'object' && data.errors.field) {
+            errorMessage += `: ${data.errors.details || `Erro no campo ${data.errors.field}`}`;
+          } else if (typeof data.errors === 'object') {
+            // Se houver múltiplos erros de validação
+            const errorFields = Object.keys(data.errors).join(', ');
+            errorMessage += `: Problemas nos campos: ${errorFields}`;
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Extrair dados da resposta REST padronizada
+      const userData = data.data || data;
       
-      return data.user;
+      localStorage.setItem('token', userData.token);
+      localStorage.setItem('user', JSON.stringify(userData.user));
+      localStorage.removeItem('demo_mode'); // Garantir que o modo demo esteja desligado
+      
+      return userData.user;
     } catch (fetchError) {
+      if (fetchError.message && !fetchError.message.includes('fetch failed')) {
+        // Se for um erro de validação ou autenticação, propaga o erro
+        throw fetchError;
+      }
+      
       // Se ocorrer erro de conexão, usamos modo de demonstração
       console.warn('Servidor backend não disponível. Usando modo de demonstração.', fetchError);
       
@@ -99,7 +147,7 @@ export const registerUser = async (name, email, password) => {
     }
   } catch (error) {
     console.error('Erro no cadastro:', error);
-    throw new Error('Erro ao fazer cadastro. Por favor, tente novamente mais tarde.');
+    throw error;
   }
 };
 
@@ -108,24 +156,37 @@ export const logoutUser = () => {
   localStorage.removeItem('user');
 };
 
-export const fetchUserCollection = async (userId) => {  try {
+export const fetchUserCollection = async (userId) => {
+  try {
+    // Verificar se o token existe
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Usuário não autenticado. Por favor, faça login.');
+    }
+
     const response = await fetch(`${BACKEND_API_URL}/books/collection/${userId}`, {
       headers: getAuthHeaders()
     });
 
-    if (!response.ok) {
-      throw new Error('Falha ao buscar coleção');
-    }    
     const data = await response.json();
+    
+    if (!response.ok) {
+      // Extrair a mensagem de erro específica da resposta da API
+      const errorMessage = data.message || 'Falha ao buscar coleção';
+      throw new Error(errorMessage);
+    }
+    
+    // Processar os dados retornados
+    const responseData = data.data || data;
     
     // Mesclando os livros da categoria "interested" com "wantToRead"
     const mergedWantToRead = [
-      ...(data.wantToRead || []), 
-      ...(data.interested || [])
+      ...(responseData.wantToRead || []), 
+      ...(responseData.interested || [])
     ];
     
     return {
-      read: data.read || [],
+      read: responseData.read || [],
       wantToRead: mergedWantToRead
     };
   } catch (error) {
@@ -142,11 +203,16 @@ export const addBook = async (bookData) => {
       body: JSON.stringify(bookData)
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error('Falha ao adicionar livro');
+      // Extrair a mensagem de erro específica da resposta da API
+      const errorMessage = data.message || 'Falha ao adicionar livro';
+      const errorDetails = data.errors ? `: ${JSON.stringify(data.errors)}` : '';
+      throw new Error(`${errorMessage}${errorDetails}`);
     }
 
-    return await response.json();
+    return data.data || data;
   } catch (error) {
     console.error('Erro ao adicionar livro:', error);
     throw error;
@@ -161,11 +227,15 @@ export const removeBook = async (bookId, userId) => {
       body: JSON.stringify({ userId })
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error('Falha ao remover livro');
+      // Extrair a mensagem de erro específica da resposta da API
+      const errorMessage = data.message || 'Falha ao remover livro';
+      throw new Error(errorMessage);
     }
 
-    return await response.json();
+    return data.data || data;
   } catch (error) {
     console.error('Erro ao remover livro:', error);
     throw error;
@@ -180,18 +250,22 @@ export const updateBookStatus = async (bookId, userId, status) => {
       body: JSON.stringify({ userId, status })
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error('Falha ao atualizar status do livro');
+      // Extrair a mensagem de erro específica da resposta da API
+      const errorMessage = data.message || 'Falha ao atualizar status do livro';
+      throw new Error(errorMessage);
     }
 
-    return await response.json();
+    return data.data || data;
   } catch (error) {
     console.error('Erro ao atualizar status:', error);
     throw error;
   }
 };
 
-export const searchBooks = async (query, maxResults = 15) => {
+export const searchBooks = async (query, maxResults = 24) => {
   if (!query || query.trim() === '') {
     return [];
   }
@@ -225,7 +299,8 @@ export const searchBooks = async (query, maxResults = 15) => {
       language: item.volumeInfo.language || 'Sem idioma definido',
       averageRating: item.volumeInfo.averageRating || 0,
       ratingsCount: item.volumeInfo.ratingsCount || 0,
-      previewLink: item.volumeInfo.previewLink || ''
+      previewLink: item.volumeInfo.previewLink || '',
+      publisher: item.volumeInfo.publisher || 'Editora desconhecida'
     }));
   } catch (error) {
     console.error('Erro:', error);

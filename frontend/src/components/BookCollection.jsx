@@ -9,7 +9,9 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Card
+  Card,
+  Pagination,
+  Stack
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useBookContext } from '../contexts/BookContext';
@@ -23,6 +25,8 @@ const BookCollection = ({ status }) => {
   const [selectedBook, setSelectedBook] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [page, setPage] = React.useState(1);
+  const [itemsPerPage] = React.useState(8);
 
   const books = state.collection[status] || [];
     const statusTitle = {
@@ -124,29 +128,42 @@ const BookCollection = ({ status }) => {
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-      )}
-
-      {loading ? (
+      )}      {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress />
         </Box>
       ) : (
-        <Grid container spacing={3}>
-          {books.length > 0 ? (
-            books.map(book => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={book.id}>                <Card 
-                  elevation={3}
-                  sx={{ 
-                    position: 'relative',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    '&:hover .menu-button': {
-                      opacity: 1,
-                      visibility: 'visible'
-                    }
-                  }}
-                >
+        <>
+          {books.length > 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="subtitle1">
+                Total: {books.length} livros
+              </Typography>
+              <Typography variant="body2">
+                Mostrando {Math.min((page - 1) * itemsPerPage + 1, books.length)} - {Math.min(page * itemsPerPage, books.length)} de {books.length}
+              </Typography>
+            </Box>
+          )}
+          
+          <Grid container spacing={3}>
+            {books.length > 0 ? (
+              books
+                .slice((page - 1) * itemsPerPage, page * itemsPerPage)
+                .map(book => (
+                  <Grid item xs={12} sm={6} md={4} lg={3} key={book.id}>
+                    <Card 
+                      elevation={3}
+                      sx={{ 
+                        position: 'relative',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        '&:hover .menu-button': {
+                          opacity: 1,
+                          visibility: 'visible'
+                        }
+                      }}
+                    >
                   <IconButton
                     className="menu-button"
                     aria-label="more"
@@ -178,11 +195,27 @@ const BookCollection = ({ status }) => {
             <Grid item xs={12}>
               <Alert severity="info" sx={{ mt: 2 }}>
                 Nenhum livro encontrado nesta categoria.
-              </Alert>
-            </Grid>
+              </Alert>            </Grid>
           )}
         </Grid>
-      )}      <Menu
+        
+        {books.length > itemsPerPage && (
+          <Stack spacing={2} sx={{ mt: 4, display: 'flex', alignItems: 'center' }}>
+            <Pagination 
+              count={Math.ceil(books.length / itemsPerPage)}
+              page={page}
+              onChange={(event, newPage) => setPage(newPage)}
+              color="primary"
+              size="large"
+              showFirstButton
+              showLastButton
+            />
+          </Stack>
+        )}
+      </>
+      )}
+      
+      <Menu
         id="book-menu"
         anchorEl={anchorEl}
         keepMounted

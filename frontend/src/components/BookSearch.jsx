@@ -13,7 +13,9 @@ import {
   Menu,
   MenuItem,
   Card,
-  Snackbar
+  Snackbar,
+  Pagination,
+  Stack
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -35,7 +37,9 @@ const BookSearch = () => {
     message: '',
     severity: 'info'
   });
-    const handleSearch = async (e) => {
+  const [page, setPage] = useState(1);
+  const [itemsPerPage] = useState(8);
+  const handleSearch = async (e) => {
     e.preventDefault();
     
     if (!query || query.trim() === '') {
@@ -55,6 +59,7 @@ const BookSearch = () => {
     try {
       const results = await searchBooks(query);
       dispatch({ type: ActionTypes.SET_SEARCH_RESULTS, payload: results });
+      setPage(1); // Resetar para a primeira página quando fizer uma nova busca
     } catch (error) {
       dispatch({ 
         type: ActionTypes.SET_ERROR, 
@@ -63,9 +68,9 @@ const BookSearch = () => {
       setErrorMessage('Erro ao buscar livros. Por favor, tente novamente.');
     }
   };
-
   const handleClearSearch = () => {
     setQuery('');
+    setPage(1);
     dispatch({ type: ActionTypes.SET_SEARCH_RESULTS, payload: [] });
   };
   
@@ -214,9 +219,7 @@ const BookSearch = () => {
         <Alert severity="error" sx={{ mb: 2 }}>
           {state.error}
         </Alert>
-      )}
-
-      {state.isLoading ? (
+      )}      {state.isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress />
         </Box>
@@ -224,48 +227,72 @@ const BookSearch = () => {
         <>
           {state.searchResults.length > 0 && (
             <>
-              <Typography variant="h6" gutterBottom>
-                Resultados da busca
-              </Typography>              <Grid container spacing={3}>
-                {state.searchResults.map((book) => (
-                  <Grid item xs={12} sm={6} md={4} lg={3} key={book.id}>                    <Card 
-                      elevation={3}
-                      sx={{ 
-                        position: 'relative',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        '&:hover .add-book-button': {
-                          opacity: 1,
-                          visibility: 'visible'
-                        }
-                      }}
-                    >
-                      <IconButton
-                        className="add-book-button"
-                        aria-label="adicionar à coleção"
-                        onClick={(e) => handleMenuOpen(e, book)}
-                        sx={{
-                          position: 'absolute',
-                          top: 5,
-                          right: 5,
-                          bgcolor: 'rgba(255,255,255,0.7)',
-                          opacity: 0,
-                          visibility: 'hidden',
-                          transition: 'opacity 0.3s ease, visibility 0.3s ease',
-                          zIndex: 2,
-                          '&:hover': {
-                            bgcolor: 'rgba(255,255,255,0.9)',
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  Resultados da busca
+                </Typography>
+                <Typography variant="body2">
+                  Mostrando {Math.min((page - 1) * itemsPerPage + 1, state.searchResults.length)} - {Math.min(page * itemsPerPage, state.searchResults.length)} de {state.searchResults.length} resultados
+                </Typography>
+              </Box>
+              
+              <Grid container spacing={3}>
+                {state.searchResults
+                  .slice((page - 1) * itemsPerPage, page * itemsPerPage)
+                  .map((book) => (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={book.id}>
+                      <Card 
+                        elevation={3}
+                        sx={{ 
+                          position: 'relative',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          '&:hover .add-book-button': {
+                            opacity: 1,
+                            visibility: 'visible'
                           }
                         }}
                       >
-                        <BookmarkAddIcon />
-                      </IconButton>
-                      <BookCardRefactored book={book} onClick={() => handleViewDetails(book)} />
-                    </Card>
-                  </Grid>
-                ))}
+                        <IconButton
+                          className="add-book-button"
+                          aria-label="adicionar à coleção"
+                          onClick={(e) => handleMenuOpen(e, book)}
+                          sx={{
+                            position: 'absolute',
+                            top: 5,
+                            right: 5,
+                            bgcolor: 'rgba(255,255,255,0.7)',
+                            opacity: 0,
+                            visibility: 'hidden',
+                            transition: 'opacity 0.3s ease, visibility 0.3s ease',
+                            zIndex: 2,
+                            '&:hover': {
+                              bgcolor: 'rgba(255,255,255,0.9)',
+                            }
+                          }}
+                        >
+                          <BookmarkAddIcon />
+                        </IconButton>
+                        <BookCardRefactored book={book} onClick={() => handleViewDetails(book)} />
+                      </Card>
+                    </Grid>
+                  ))}
               </Grid>
+              
+              {state.searchResults.length > itemsPerPage && (
+                <Stack spacing={2} sx={{ mt: 4, display: 'flex', alignItems: 'center' }}>
+                  <Pagination 
+                    count={Math.ceil(state.searchResults.length / itemsPerPage)}
+                    page={page}
+                    onChange={(event, newPage) => setPage(newPage)}
+                    color="primary"
+                    size="large"
+                    showFirstButton
+                    showLastButton
+                  />
+                </Stack>
+              )}
             </>
           )}
           
