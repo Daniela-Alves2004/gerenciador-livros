@@ -1,15 +1,44 @@
-// Configuração do MongoDB
-const mongoose = require('mongoose');
+const { Sequelize } = require('sequelize');
+const path = require('path');
+const fs = require('fs');
+const { setupLogger } = require('./logger');
 require('dotenv').config();
+
+const logger = setupLogger();
+
+const dbPath = path.join(__dirname, '../../db/database.sqlite');
+
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: dbPath,
+  logging: (msg) => logger.debug(msg),
+  define: {
+    timestamps: true, 
+    underscored: true, 
+  },
+});
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Conexão com MongoDB estabelecida com sucesso');
+    await sequelize.authenticate();
+    logger.info('Conexão com SQLite estabelecida com sucesso');
+    
+    if (process.env.NODE_ENV !== 'production') {
+      await sequelize.sync();
+      logger.info('Modelos sincronizados com o banco de dados');
+    }
   } catch (error) {
-    console.error('Erro ao conectar ao MongoDB:', error.message);
-    process.exit(1);
+    logger.error(`Erro ao conectar ao SQLite: ${error.message}`, { stack: error.stack });
+    process.exit(1); 
   }
 };
 
-module.exports = connectDB;
+module.exports = {
+  sequelize,
+  connectDB
+};
