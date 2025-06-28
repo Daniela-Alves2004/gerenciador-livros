@@ -1,166 +1,167 @@
-# Aplicação de Busca de Livros na API do Google Books
+# Projeto Full-Stack - Programação Web
 
-Uma aplicação web desenvolvida em React para buscar, informações sobre livros utilizando a API do Google Books.
+Uma aplicação web full-stack desenvolvida para a disciplina de Programação Web Fullstack, implementando um sistema de gerenciamento de livros com arquitetura em 3 camadas.
 
 ## Descrição do Projeto
 
-Meu Acervo é uma aplicação full-stack que permite aos usuários:
-- Buscar livros por título, autor ou assunto
-- Visualizar detalhes completos de cada livro
-- Criar uma conta e fazer login
-- Adicionar livros à sua coleção pessoal
-- Organizar os livros em categorias (Lidos, Quero Ler)
+O projeto implementa uma aplicação web para gerenciamento de coleção de livros com os seguintes requisitos funcionais:
 
-Link do site: https://gerenciador-livros-six.vercel.app
-### Demonstração
-Abaixo estão algumas telas da aplicação:
+1. **Login**: Sistema de autenticação de usuários
+2. **Busca**: Busca de livros na coleção pessoal do usuário
+3. **Inserção**: Adição de novos livros à coleção
 
-Tela de Busca de Livros
-![Captura de tela 2025-05-08 203726](https://github.com/user-attachments/assets/0a849ccf-2123-4870-b5f6-f47c226250e6)
+Apenas usuários com sessão ativa (logados) podem realizar operações de busca e inserção de livros.
 
-Tela de resultado da busca
-![Captura de tela 2025-05-08 203744](https://github.com/user-attachments/assets/5863ae5e-20e7-4561-b5d0-664ebe37d856)
+## Arquitetura do Sistema
 
-Detalhes do Livro
-![Captura de tela 2025-05-08 203805](https://github.com/user-attachments/assets/ae701108-7b43-4175-a2f9-8168dcc8e238)
+O sistema foi implementado seguindo uma arquitetura de 3 camadas:
 
-## Hooks e Funcionalidades React.js Implementadas
+### Front-end
+- **Tecnologia**: React.js
+- **Comunicação**: Requisições HTTP (SPA - Single Page Application)
+- **Padrão**: Segue a mesma estrutura do PROJETO 1
 
-### Hooks Utilizados
-- **useContext e createContext**: Implementados no `BookContext.jsx` para gerenciar o estado global da aplicação e compartilhar dados entre componentes.
-- **useReducer**: Utilizado no `BookContext.jsx` para gerenciar estados complexos através de actions, similar a um estado Redux.
-- **useState**: Implementado em vários componentes como `BookSearch.jsx` para gerenciar estados locais.
-- **useEffect**: Utilizado no componente `BookDetail.jsx` para carregar dados quando o livro selecionado muda.
-- **useTheme e useMediaQuery (MUI)**: Implementados para criar um design responsivo.
+### Back-end HTTP
+- **Tecnologia**: Express.js
+- **Padrão**: API RESTful
+- **Acesso**: Direto ao banco de dados
+- **Estrutura de pastas obrigatória**:
+  - `src/routes`: Arquivos de rotas com controladores integrados
+  - `src/models`: Classes de acesso ao banco de dados
+  - `src/config`: Arquivos de configuração (banco, cache, etc.)
 
-### Padrões e Funcionalidades React
-- **Context API**: Implementada através do `BookContext` para gerenciar o estado global da aplicação.
-- **Componentes Funcionais**: Todos os componentes seguem o padrão de componentes funcionais com hooks.
-- **Renderização Condicional**: Utilizada em diversos componentes para mostrar/esconder elementos com base em condições.
-- **Props**: Transferência de dados entre componentes parent-child.
-- **Componentes de Alta Ordem (HOC)**: Implementados com o ThemeProvider do Material UI.
-- **Lifting State Up**: Implementado através do Context para compartilhar estados entre componentes irmãos.
+### Banco de Dados
+- **Tecnologia**: SQLite com Sequelize ORM
+- **Pool de conexões**: Configurado para otimização de performance
 
-## APIs Utilizadas
+## Funcionalidades Implementadas
 
-### API Externa: Google Books
-Este projeto utiliza a **API Google Books** para busca e exibição de informações sobre livros.
+### Requisitos Funcionais
+- ✅ **Login**: Autenticação e autorização de usuários
+- ✅ **Busca**: Pesquisa de livros na coleção pessoal
+- ✅ **Inserção**: Adição de livros à coleção
 
-#### Endpoints da API Google Books
-- **Pesquisa de Livros**: `GET /volumes?q={query}&maxResults={maxResults}`
-  - Busca livros com base em uma consulta de texto, limitando os resultados
-  - Implementado na função `searchBooks()` no arquivo `requestApi.js`
+### Validação e Segurança
+- ✅ **Verificação de campos no servidor**
+- ✅ **Mensagens de validação do servidor**
+- ✅ **Padrão REST implementado**
+- ✅ **Medidas de segurança contra**:
+  - Falhas de criptografia (senhas criptografadas com bcrypt)
+  - Injeção (sanitização de parâmetros, prevenção SQL/NoSQL inject e XSS)
+  - Falhas de autenticação (tokens JWT, invalidação correta)
+  - Registro e monitoramento (logs de autenticação, buscas e postagens)
 
-- **Detalhes do Livro**: `GET /volumes/{bookId}`
-  - Obtém informações detalhadas sobre um livro específico
-  - Implementado na função `getBookDetails()` no arquivo `requestApi.js`
-
-### API Interna: Backend Express.js
-O projeto também inclui uma API RESTful própria desenvolvida com Express.js.
-
-#### Endpoints da API Interna
-##### Autenticação
-- **Registro de usuário**: `POST /api/auth/register`
-  - Registra um novo usuário no sistema
-  - Retorna token JWT e dados do usuário
-
-- **Login**: `POST /api/auth/login`
-  - Autentica um usuário existente
-  - Retorna token JWT e dados do usuário
-
-##### Gerenciamento de Livros
-- **Buscar coleção**: `GET /api/books/collection/:userId`
-  - Retorna a coleção de livros do usuário agrupada por status
-
-- **Adicionar livro**: `POST /api/books`
-  - Adiciona um novo livro à coleção do usuário
-
-- **Remover livro**: `DELETE /api/books/:bookId`
-  - Remove um livro da coleção do usuário
-
-- **Atualizar status**: `PUT /api/books/:bookId/status`
-  - Atualiza o status de um livro na coleção (ex: de "Quero Ler" para "Lido")
-
-## Tecnologias Utilizadas
-
-### Frontend
-- **React.js**: Biblioteca JavaScript para construção de interfaces de usuário
-- **Material-UI (MUI)**: Framework de componentes React para design consistente
-- **CSS**: Estilização de componentes
-- **Fetch API**: Para requisições HTTP
-
-### Backend
-- **Node.js**: Ambiente de execução JavaScript server-side
-- **Express.js**: Framework web para desenvolvimento de APIs
-- **MongoDB**: Banco de dados NoSQL para armazenamento de dados
-- **Mongoose**: ODM para MongoDB e validação de dados
-- **JWT**: Para autenticação baseada em tokens
-- **bcryptjs**: Para criptografia segura de senhas
-
-## Funcionalidades Desenvolvidas
-
-1. **Sistema de Busca**: Interface para pesquisar livros por título, autor ou assunto
-2. **Visualização de Resultados**: Exibição de livros em cards com informações essenciais
-3. **Paginação de Resultados**: Sistema de paginação para navegação eficiente em grandes conjuntos de resultados
-4. **Detalhamento de Livros**: Modal com informações completas sobre o livro selecionado
-5. **UI Responsiva**: Interface adaptável a diferentes tamanhos de tela
-6. **Tema Personalizado**: Implementação de tema visual consistente com MUI
-7. **Tratamento Avançado de Erros**: Feedback específico para diferentes tipos de erros durante operações
-8. **Validação de Campos**: Verificação em tempo real de campos de formulário
-
-## Como Executar o Projeto
-
-### Configuração do Backend
-1. Navegue até a pasta do backend:
-```
-cd backend
-```
-2. Instale as dependências:
-```
-npm install
-```
-3. Configure o arquivo .env na raiz da pasta backend:
-```
-PORT=3001
-MONGODB_URI=mongodb://localhost:27017/meuacervo
-JWT_SECRET=sua_chave_secreta_aqui
-JWT_EXPIRATION=7d
-```
-4. Inicie o servidor:
-```
-npm run dev
-```
-
-### Configuração do Frontend
-1. Navegue até a pasta do frontend:
-```
-cd frontend
-```
-2. Instale as dependências:
-```
-npm install
-```
-3. Inicie o aplicativo:
-```
-npm start
-```
-4. O navegador abrirá automaticamente em `http://localhost:3000`
+### Otimizações Implementadas
+- ✅ **Front-end**:
+  - Compressão de arquivos estáticos
+  - Build otimizado para produção
+- ✅ **Back-end**:
+  - Compressão de respostas do servidor
+  - Estratégia de cache implementada
+  - Pool de conexões configurado
 
 ## Estrutura do Projeto
 
-### Frontend
-- `frontend/src/components`: Componentes React da aplicação
-- `frontend/src/contexts`: Contextos React para gerenciamento de estado
-- `frontend/src/styles`: Estilos e tema da aplicação
-- `frontend/public`: Arquivos estáticos
+```
+projeto-full-stack/
+├── backend/
+│   ├── src/
+│   │   ├── routes/     # Rotas com controladores integrados
+│   │   ├── models/     # Modelos do banco de dados
+│   │   └── config/     # Configurações
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/ # Componentes React
+│   │   └── contexts/   # Context API e requisições
+│   └── package.json
+└── README.md
+```
+
+## Tecnologias Utilizadas
 
 ### Backend
-- `backend/src/config`: Configurações (banco de dados, autenticação)
-- `backend/src/middleware`: Middlewares do Express
-- `backend/src/models`: Modelos de dados do Mongoose
-- `backend/src/routes`: Rotas da API
-- `backend/src/server.js`: Arquivo principal do servidor
+- Express.js (servidor HTTP)
+- Sequelize (ORM)
+- SQLite (banco de dados)
+- bcryptjs (criptografia de senhas)
+- jsonwebtoken (autenticação JWT)
+- helmet (segurança)
+- compression (compressão)
+- express-rate-limit (rate limiting)
+- morgan (logs)
+- winston (sistema de logs)
+- node-cache (cache em memória)
 
-## Aluno
+### Frontend
+- React.js (biblioteca de UI)
+- Material-UI (componentes de UI)
+- Context API (gerenciamento de estado)
 
-Daniela Dos Santos Alves 2465728
+## Como Executar
+
+### Pré-requisitos
+- Node.js (versão 14 ou superior)
+- npm ou yarn
+
+### Backend
+```bash
+cd backend
+npm install
+npm run init-db  # Inicializar banco de dados
+npm start        # Produção
+npm run dev      # Desenvolvimento
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm start        # Desenvolvimento
+npm run build    # Build para produção
+```
+
+### Scripts de Inicialização
+O projeto inclui scripts batch para facilitar a execução:
+- `start_backend.bat` - Inicia o servidor backend
+- `start_frontend.bat` - Inicia o servidor frontend
+- `start_prod.bat` - Inicia ambos em modo produção
+
+## API Endpoints
+
+### Autenticação
+- `POST /api/auth/login` - Login de usuário
+- `POST /api/auth/register` - Registro de usuário
+- `POST /api/auth/logout` - Logout de usuário
+- `GET /api/auth/verify` - Verificação de token
+
+### Livros
+- `GET /api/books/collection/:userId` - Buscar coleção do usuário
+- `GET /api/books/search` - Buscar livros na coleção
+- `POST /api/books/add` - Adicionar livro à coleção
+- `PUT /api/books/:id/status` - Atualizar status do livro
+- `DELETE /api/books/:id` - Remover livro da coleção
+
+## Recursos de Segurança
+
+1. **Criptografia**: Senhas armazenadas com hash bcrypt
+2. **Sanitização**: Prevenção contra XSS e injeção SQL
+3. **Rate Limiting**: Proteção contra ataques automatizados
+4. **Logs de Segurança**: Monitoramento de tentativas de login e operações
+5. **Validação**: Validação rigorosa de entrada no servidor
+
+## Otimizações de Performance
+
+1. **Cache**: Sistema de cache em memória para consultas frequentes
+2. **Compressão**: Respostas comprimidas do servidor
+3. **Pool de Conexões**: Gerenciamento otimizado de conexões do banco
+4. **Build Otimizado**: Frontend otimizado para produção
+
+## Logs e Monitoramento
+
+O sistema implementa logs abrangentes para:
+- Tentativas de autenticação (sucesso e falha)
+- Operações de busca
+- Inserção e modificação de dados
+- Erros do sistema
+- Tentativas de acesso não autorizadas

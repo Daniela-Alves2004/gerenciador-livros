@@ -9,10 +9,7 @@ const fs = require('fs');
 const https = require('https');
 const path = require('path');
 const { connectDB, closeDB, healthCheck, getPoolStats } = require('./config/database');
-const restResponse = require('./middleware/restResponse');
 const { setupLogger } = require('./config/logger');
-const { preventSQLInjection } = require('./middleware/validateData');
-const cacheService = require('./services/cacheService');
 require('dotenv').config();
 
 const logger = setupLogger();
@@ -22,7 +19,111 @@ const bookRoutes = require('./routes/books');
 
 const app = express();
 
-app.locals.cacheService = cacheService;
+app.use((req, res, next) => {
+  res.ok = (data, message = 'Operação realizada com sucesso') => {
+    res.status(200).json({
+      success: true,
+      message,
+      data
+    });
+  };
+
+  res.created = (data, message = 'Recurso criado com sucesso') => {
+    res.status(201).json({
+      success: true,
+      message,
+      data
+    });
+  };
+
+  res.badRequest = (errors, message = 'Dados inválidos') => {
+    res.status(400).json({
+      success: false,
+      message,
+      errors
+    });
+  };
+
+  res.unauthorized = (message = 'Não autorizado') => {
+    res.status(401).json({
+      success: false,
+      message,
+      errors: {
+        auth: true,
+        details: message
+      }
+    });
+  };
+
+  res.forbidden = (message = 'Acesso negado') => {
+    res.status(403).json({
+      success: false,
+      message,
+      errors: {
+        auth: true,
+        details: message
+      }
+    });
+  };
+
+  res.notFound = (message = 'Recurso não encontrado') => {
+    res.status(404).json({
+      success: false,
+      message,
+      errors: {
+        notFound: true,
+        details: message
+      }
+    });
+  };
+
+  res.serverError = (message = 'Erro interno do servidor') => {
+    res.status(500).json({
+      success: false,
+      message,
+      errors: {
+        server: true,
+        details: message
+      }
+    });
+  };
+
+  next();
+});
+
+app.use((req, res, next) => {
+  const sanitizeString = (str) => {
+    if (typeof str !== 'string') return str;
+    return str.trim()
+      .replace(/[<>]/g, '')
+      .replace(/javascript:/gi, '')
+      .replace(/on\w+\s*=/gi, '');
+  };
+
+  const sanitizeObject = (obj) => {
+    if (typeof obj !== 'object' || obj === null) {
+      return obj;
+    }
+
+    const sanitized = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === 'string') {
+        sanitized[key] = sanitizeString(value);
+      } else if (typeof value === 'object' && value !== null) {
+        sanitized[key] = sanitizeObject(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
+  };
+
+  if (req.body) req.body = sanitizeObject(req.body);
+  if (req.query) req.query = sanitizeObject(req.query);
+  if (req.params) req.params = sanitizeObject(req.params);
+
+  next();
+});
 
 connectDB();
 
@@ -54,24 +155,7 @@ app.use(cors({
 app.use(hpp()); 
 app.use('/api/', limiter); 
 
-app.use(preventSQLInjection);
-
-app.use(morgan('combined')); 
-app.use(restResponse);
-
-const serveCompressedStatic = require('./middleware/staticCompression');
-const frontendBuildPath = path.join(__dirname, '../../frontend/build');
-
-if (fs.existsSync(frontendBuildPath)) {
-  logger.info('Diretório de build do frontend encontrado. Configurando servir arquivos estáticos.');
-  
-  app.use(serveCompressedStatic({ 
-    root: frontendBuildPath,
-    extensions: ['.html', '.js', '.css', '.svg', '.json']
-  }));
-  
-  app.use(express.static(frontendBuildPath));
-}
+app.use(morgan('combined'));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/books', bookRoutes);
@@ -80,87 +164,43 @@ app.get('/api/health', (req, res) => {
   res.ok({ status: 'online', timestamp: new Date() }, 'API está funcionando corretamente');
 });
 
-app.get('/api/cache/stats', async (req, res) => {
-  try {
-    const stats = await cacheService.getStats();
-    res.ok(stats, 'Estatísticas do cache obtidas com sucesso');
-  } catch (error) {
-    logger.error(`Erro ao obter estatísticas do cache: ${error.message}`);
-    res.serverError(error, 'Erro ao obter estatísticas do cache');
-  }
-});
-
 app.get('/api/database/stats', async (req, res) => {
   try {
     const poolStats = getPoolStats();
     const isHealthy = await healthCheck();
     
-    const stats = {
-      pool: poolStats,
-      healthy: isHealthy,
-      timestamp: new Date().toISOString()
-    };
-    
-    res.ok(stats, 'Estatísticas do banco de dados obtidas com sucesso');
+    res.status(200).json({
+      success: true,
+      message: 'Estatísticas do banco de dados obtidas com sucesso',
+      data: {
+        pool: poolStats,
+        healthy: isHealthy,
+        timestamp: new Date().toISOString()
+      }
+    });
   } catch (error) {
     logger.error(`Erro ao obter estatísticas do banco: ${error.message}`);
-    res.serverError(error, 'Erro ao obter estatísticas do banco de dados');
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao obter estatísticas do banco',
+      errors: {
+        server: true,
+        details: error.message
+      }
+    });
   }
 });
-
-app.get('/api/system/health', async (req, res) => {
-  try {
-    const [dbHealth, cacheStats] = await Promise.all([
-      healthCheck(),
-      cacheService.getStats()
-    ]);
-    
-    const systemHealth = {
-      database: {
-        healthy: dbHealth,
-        pool: getPoolStats()
-      },
-      cache: cacheStats,
-      server: {
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        version: process.version
-      },
-      timestamp: new Date().toISOString()
-    };
-    
-    const overallHealth = dbHealth && cacheStats.connected;
-    
-    if (overallHealth) {
-      res.ok(systemHealth, 'Sistema funcionando corretamente');
-    } else {
-      res.status(503).json({
-        success: false,
-        message: 'Problemas detectados no sistema',
-        data: systemHealth
-      });
-    }
-  } catch (error) {
-    logger.error(`Erro na verificação de saúde do sistema: ${error.message}`);
-    res.serverError(error, 'Erro na verificação de saúde do sistema');
-  }
-});
-
-if (process.env.NODE_ENV !== 'production') {
-  app.delete('/api/cache/flush', async (req, res) => {
-    try {
-      await cacheService.flush();
-      res.ok(null, 'Cache limpo com sucesso');
-    } catch (error) {
-      logger.error(`Erro ao limpar cache: ${error.message}`);
-      res.serverError(error, 'Erro ao limpar cache');
-    }
-  });
-}
 
 app.use((req, res) => {
   logger.warn(`Rota não encontrada: ${req.originalUrl}`);
-  res.notFound('Rota não encontrada');
+  res.status(404).json({
+    success: false,
+    message: 'Rota não encontrada',
+    errors: {
+      notFound: true,
+      details: `A rota ${req.originalUrl} não foi encontrada`
+    }
+  });
 });
 
 app.use((err, req, res, next) => {
@@ -169,7 +209,14 @@ app.use((err, req, res, next) => {
       stack: err.stack,
       sql: err.sql || 'SQL não disponível'
     });
-    return res.serverError(null, 'Erro ao processar a operação no banco de dados');
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao processar a operação no banco de dados',
+      errors: {
+        server: true,
+        details: 'Erro interno do banco de dados'
+      }
+    });
   }
   
   if (err.name === 'SequelizeValidationError') {
@@ -179,37 +226,52 @@ app.use((err, req, res, next) => {
     }));
     
     logger.warn('Erro de validação:', { errors: validationErrors });
-    return res.badRequest({ errors: validationErrors }, 'Erro de validação');
+    return res.status(400).json({
+      success: false,
+      message: 'Erro de validação',
+      errors: {
+        validation: true,
+        fields: validationErrors
+      }
+    });
   }
 
   if (err.name === 'SequelizeUniqueConstraintError') {
     const field = err.errors[0]?.path || 'campo';
     logger.warn(`Violação de unicidade: ${field}`);
-    return res.conflict(`O valor fornecido para ${field} já está em uso`);
+    return res.status(409).json({
+      success: false,
+      message: `O valor fornecido para ${field} já está em uso`,
+      errors: {
+        validation: true,
+        field,
+        details: 'Valor duplicado'
+      }
+    });
   }
   
   logger.error(`Erro: ${err.message}, Stack: ${err.stack}`);
-  res.serverError(err, 'Erro interno do servidor');
+  res.status(500).json({
+    success: false,
+    message: 'Erro interno do servidor',
+    errors: {
+      server: true,
+      details: err.message
+    }
+  });
 });
-
 
 const PORT = process.env.PORT || 3001;
 
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM recebido, encerrando servidor...');
-  await Promise.all([
-    cacheService.close(),
-    closeDB()
-  ]);
+  await closeDB();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   logger.info('SIGINT recebido, encerrando servidor...');
-  await Promise.all([
-    cacheService.close(),
-    closeDB()
-  ]);
+  await closeDB();
   process.exit(0);
 });
 
