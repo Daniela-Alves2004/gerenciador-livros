@@ -13,16 +13,12 @@ import {
   Rating,
   IconButton,
   CircularProgress,
-  Link,
-  Alert,
-  Snackbar
+  Link
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { useBookContext } from '../contexts/BookContext';
-import { getBookDetails, addBook } from '../contexts/requestApi';
+import { getBookDetails } from '../contexts/requestApi';
 import { ActionTypes } from '../contexts/BookContext';
 
 
@@ -30,8 +26,6 @@ const BookDetail = () => {
   const { state, dispatch } = useBookContext();
   const [loading, setLoading] = useState(false);
   const [bookDetails, setBookDetails] = useState(null);
-  const [addingToCollection, setAddingToCollection] = useState(false);
-  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
   const { selectedBook } = state;
   
   useEffect(() => {
@@ -56,67 +50,6 @@ const BookDetail = () => {
   const handleClose = () => {
     dispatch({ type: ActionTypes.CLEAR_SELECTED_BOOK });
     setBookDetails(null);
-  };
-
-  const handleMarkAsRead = async () => {
-    await handleAddToCollection('read', 'Livro adicionado aos lidos com sucesso!');
-  };
-
-  const handleMarkAsWantToRead = async () => {
-    await handleAddToCollection('wantToRead', 'Livro adicionado à lista "Quero Ler" com sucesso!');
-  };
-
-  const handleAddToCollection = async (status, successMessage) => {
-    if (!state.isAuthenticated) {
-      setNotification({
-        open: true,
-        message: 'Faça login para adicionar livros à sua coleção',
-        severity: 'warning'
-      });
-      return;
-    }
-
-    if (!selectedBook || !state.user) return;
-
-    try {
-      setAddingToCollection(true);
-
-      const bookData = {
-        ...selectedBook,
-        userId: state.user.id,
-        status
-      };
-
-      const result = await addBook(bookData);
-
-      dispatch({
-        type: ActionTypes.ADD_BOOK_TO_COLLECTION,
-        payload: {
-          book: result,
-          status
-        }
-      });
-
-      setNotification({
-        open: true,
-        message: successMessage,
-        severity: 'success'
-      });
-
-    } catch (error) {
-      console.error('Erro ao adicionar livro:', error);
-      setNotification({
-        open: true,
-        message: error.message || 'Erro ao adicionar livro à coleção',
-        severity: 'error'
-      });
-    } finally {
-      setAddingToCollection(false);
-    }
-  };
-
-  const handleCloseNotification = () => {
-    setNotification({ ...notification, open: false });
   };
 
   const formatPublishedDate = (date) => {
@@ -330,71 +263,11 @@ const BookDetail = () => {
         )}
       </DialogContent>
 
-      <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={handleClose} sx={{bgcolor: "secondary.main", color: "background.default"}} >
           Fechar
         </Button>
-        
-        {state.isAuthenticated && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<BookmarkIcon />}
-              onClick={handleMarkAsWantToRead}
-              disabled={addingToCollection}
-              sx={{
-                borderColor: "primary.main",
-                color: "primary.main",
-                '&:hover': {
-                  borderColor: "primary.dark",
-                  bgcolor: "primary.main",
-                  color: "background.default",
-                },
-                '&:disabled': {
-                  borderColor: "grey.400",
-                  color: "grey.400",
-                }
-              }}
-            >
-              {addingToCollection ? 'Adicionando...' : 'Quero Ler'}
-            </Button>
-            
-            <Button
-              variant="contained"
-              startIcon={<MenuBookIcon />}
-              onClick={handleMarkAsRead}
-              disabled={addingToCollection}
-              sx={{
-                bgcolor: "primary.main",
-                color: "background.default",
-                '&:hover': {
-                  bgcolor: "primary.dark",
-                },
-                '&:disabled': {
-                  bgcolor: "grey.400",
-                }
-              }}
-            >
-              {addingToCollection ? 'Adicionando...' : 'Marcar como Lido'}
-            </Button>
-          </Box>
-        )}
       </DialogActions>
-
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={handleCloseNotification} 
-          severity={notification.severity} 
-          sx={{ width: '100%' }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
     </Dialog>
   );
 };

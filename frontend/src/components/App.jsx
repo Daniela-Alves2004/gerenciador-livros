@@ -19,15 +19,12 @@ const AppContent = () => {
   const [notification, setNotification] = useState({ open: false, message: '', type: 'info' });
 
   useEffect(() => {
-    const protectedTabs = ['read', 'wantToRead', 'addBook'];
-    
-    if (protectedTabs.includes(activeTab) && !state.isAuthenticated) {
+    if (!state.isAuthenticated && activeTab === 'login') {
       setNotification({
         open: true,
         message: 'Faça login para acessar esta página',
         type: 'warning'
       });
-      setActiveTab('login');
     }
   }, [activeTab, state.isAuthenticated]);
 
@@ -45,9 +42,6 @@ const AppContent = () => {
       <Container component="main" sx={{ mt: 3, mb: 3, flex: 1 }}>
         {activeTab === 'search' && <BookSearch />}
         {activeTab === 'login' && !state.isAuthenticated && <Login />}
-        {activeTab === 'addBook' && state.isAuthenticated && <BookInsert />}
-        {activeTab === 'read' && state.isAuthenticated && <BookCollection status="read" />}
-        {activeTab === 'wantToRead' && state.isAuthenticated && <BookCollection status="wantToRead" />}
       </Container>
       
       <BookDetail />

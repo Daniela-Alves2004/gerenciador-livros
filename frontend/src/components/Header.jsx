@@ -94,14 +94,6 @@ const Header = ({ activeTab, onTabChange }) => {
               )}
               {state.isAuthenticated && (
                 <>
-                  <Tab 
-                    label="Lidos" 
-                    value="read" 
-                  />
-                  <Tab 
-                    label="Quero Ler" 
-                    value="wantToRead" 
-                  />
                 </>
               )}
             </Tabs>

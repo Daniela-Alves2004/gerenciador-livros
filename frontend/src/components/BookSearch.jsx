@@ -253,26 +253,6 @@ const BookSearch = () => {
                           }
                         }}
                       >
-                        <IconButton
-                          className="add-book-button"
-                          aria-label="adicionar à coleção"
-                          onClick={(e) => handleMenuOpen(e, book)}
-                          sx={{
-                            position: 'absolute',
-                            top: 5,
-                            right: 5,
-                            bgcolor: 'rgba(255,255,255,0.7)',
-                            opacity: 0,
-                            visibility: 'hidden',
-                            transition: 'opacity 0.3s ease, visibility 0.3s ease',
-                            zIndex: 2,
-                            '&:hover': {
-                              bgcolor: 'rgba(255,255,255,0.9)',
-                            }
-                          }}
-                        >
-                          <BookmarkAddIcon />
-                        </IconButton>
                         <BookCardRefactored book={book} onClick={() => handleViewDetails(book)} />
                       </Card>
                     </Grid>
@@ -303,55 +283,6 @@ const BookSearch = () => {
             </Box>
           )}
         </>      )}
-        <Menu
-        id="book-menu"
-        anchorEl={anchorEl}
-        keepMounted
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        PaperProps={{
-          elevation: 3,
-          sx: {
-            bgcolor: 'secondary.dark',
-            color: 'background.default',
-            minWidth: '220px',
-            borderRadius: '8px',
-            overflow: 'hidden'
-          }
-        }}
-        MenuListProps={{
-          sx: { py: 0 }
-        }}
-      >
-        <MenuItem 
-          onClick={() => handleViewDetails(selectedBook)}
-          sx={{ 
-            py: 1.5,
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
-            '&:hover': { bgcolor: 'secondary.main' }
-          }}
-        >
-          Ver Detalhes
-        </MenuItem>
-        <MenuItem 
-          onClick={() => handleAddToCollection('read')}
-          sx={{ 
-            py: 1.5,
-            '&:hover': { bgcolor: 'secondary.main' }
-          }}
-        >
-          Adicionar como Lido
-        </MenuItem>        <MenuItem 
-          onClick={() => handleAddToCollection('wantToRead')}
-          sx={{ 
-            py: 1.5,
-            '&:hover': { bgcolor: 'secondary.main' }
-          }}
-        >
-          Adicionar como Quero Ler
-        </MenuItem>
-      </Menu>
-      
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
