@@ -44,8 +44,9 @@ const AppContent = () => {
       <Header activeTab={activeTab} onTabChange={handleTabChange} />
       <Container component="main" sx={{ mt: 3, mb: 3, flex: 1 }}>
         {activeTab === 'search' && <BookSearch />}
-        {activeTab === 'login' && !state.isAuthenticated && <Login />}        {activeTab === 'addBook' && state.isAuthenticated && <BookInsert />}
-          {activeTab === 'read' && state.isAuthenticated && <BookCollection status="read" />}
+        {activeTab === 'login' && !state.isAuthenticated && <Login />}
+        {activeTab === 'addBook' && state.isAuthenticated && <BookInsert />}
+        {activeTab === 'read' && state.isAuthenticated && <BookCollection status="read" />}
         {activeTab === 'wantToRead' && state.isAuthenticated && <BookCollection status="wantToRead" />}
       </Container>
       

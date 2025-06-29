@@ -9,8 +9,10 @@ O projeto implementa uma aplicação web para gerenciamento de coleção de livr
 1. **Login**: Sistema de autenticação de usuários
 2. **Busca**: Busca de livros na coleção pessoal do usuário
 3. **Inserção**: Adição de novos livros à coleção
+4. **Lidos**: Visualização dos livros já lidos na coleção
+5. **Quero Ler**: Gerenciamento de livros que o usuário pretende ler
 
-Apenas usuários com sessão ativa (logados) podem realizar operações de busca e inserção de livros.
+Apenas usuários com sessão ativa (logados) podem realizar operações de busca, inserção e gerenciamento de livros lidos e para ler.
 
 ## Arquitetura do Sistema
 
@@ -40,6 +42,8 @@ O sistema foi implementado seguindo uma arquitetura de 3 camadas:
 - ✅ **Login**: Autenticação e autorização de usuários
 - ✅ **Busca**: Pesquisa de livros na coleção pessoal
 - ✅ **Inserção**: Adição de livros à coleção
+- ✅ **Lidos**: Visualização de livros já lidos
+- ✅ **Quero Ler**: Gerenciamento de livros para ler futuramente
 
 ### Validação e Segurança
 - ✅ **Verificação de campos no servidor**
@@ -108,17 +112,14 @@ projeto-full-stack/
 ```bash
 cd backend
 npm install
-npm run init-db  # Inicializar banco de dados
-npm start        # Produção
-npm run dev      # Desenvolvimento
+npm run dev   
 ```
 
 ### Frontend
 ```bash
 cd frontend
 npm install
-npm start        # Desenvolvimento
-npm run build    # Build para produção
+npm start
 ```
 
 ### Scripts de Inicialização

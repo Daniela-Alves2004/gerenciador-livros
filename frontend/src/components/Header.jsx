@@ -16,7 +16,6 @@ import {
 import { useTheme } from '@mui/material/styles';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import SearchIcon from '@mui/icons-material/Search';
-import AddCircleIcon from '@mui/icons-material/AddCircle';
 import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -86,19 +85,14 @@ const Header = ({ activeTab, onTabChange }) => {
                 value="search" 
               />
               {state.isAuthenticated && (
-                <>                  <Tab 
+                <>
+                  <Tab 
                     label="Lidos" 
                     value="read" 
                   />
                   <Tab 
                     label="Quero Ler" 
                     value="wantToRead" 
-                  />
-                  <Tab 
-                    label="Adicionar" 
-                    icon={<AddCircleIcon />} 
-                    iconPosition="start"
-                    value="addBook" 
                   />
                 </>
               )}
