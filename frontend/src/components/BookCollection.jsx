@@ -21,7 +21,6 @@ import BookCardRefactored from './BookCardRefactored';
 
 const BookCollection = ({ status }) => {
   const { state, dispatch } = useBookContext();
-  const [anchorEl, setAnchorEl] = React.useState(null);
   const [selectedBook, setSelectedBook] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');

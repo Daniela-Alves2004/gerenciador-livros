@@ -10,8 +10,6 @@ import {
   Paper,
   InputAdornment,
   IconButton,
-  Menu,
-  MenuItem,
   Card,
   Snackbar,
   Pagination,
@@ -19,10 +17,9 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
-import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 
 import { useBookContext } from '../contexts/BookContext';
-import { searchBooks, addBook } from '../contexts/requestApi';
+import { searchBooks } from '../contexts/requestApi';
 import { ActionTypes } from '../contexts/BookContext';
 import BookCardRefactored from './BookCardRefactored';
 
@@ -30,8 +27,6 @@ const BookSearch = () => {
   const { state, dispatch } = useBookContext();
   const [query, setQuery] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [selectedBook, setSelectedBook] = useState(null);
   const [notification, setNotification] = useState({
     open: false,
     message: '',
@@ -73,66 +68,6 @@ const BookSearch = () => {
     dispatch({ type: ActionTypes.SET_SEARCH_RESULTS, payload: [] });
   };
   
-  const handleMenuOpen = (event, book) => {
-    if (!state.isAuthenticated) {
-      setNotification({
-        open: true,
-        message: 'Faça login para adicionar livros à sua coleção',
-        severity: 'warning'
-      });
-      return;
-    }
-    
-    setAnchorEl(event.currentTarget);
-    setSelectedBook(book);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedBook(null);
-  };
-  
-  const handleAddToCollection = async (status) => {
-    handleMenuClose();
-    
-    if (!selectedBook || !state.user) return;
-    
-    try {
-      dispatch({ type: ActionTypes.SET_LOADING, payload: true });
-      
-      const bookData = {
-        ...selectedBook,
-        userId: state.user.id,
-        status
-      };
-      
-      const result = await addBook(bookData);
-      
-      dispatch({
-        type: ActionTypes.ADD_BOOK_TO_COLLECTION,
-        payload: {
-          book: result,
-          status
-        }
-      });
-      
-      setNotification({
-        open: true,
-        message: `Livro adicionado com sucesso à coleção "${status}"`,
-        severity: 'success'
-      });
-      
-    } catch (error) {
-      setNotification({
-        open: true,
-        message: 'Erro ao adicionar livro à coleção',
-        severity: 'error'
-      });
-    } finally {
-      dispatch({ type: ActionTypes.SET_LOADING, payload: false });
-    }
-  };
-  
   const handleCloseNotification = () => {
     setNotification({...notification, open: false});
   };
@@ -142,7 +77,6 @@ const BookSearch = () => {
       type: ActionTypes.SELECT_BOOK,
       payload: book
     });
-    handleMenuClose();
   };
 
   return (

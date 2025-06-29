@@ -5,8 +5,6 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import BookSearch from './BookSearch';
 import BookDetail from './BookDetail';
-import BookInsert from './BookInsert';
-import BookCollection from './BookCollection';
 import Login from './Login';
 import theme from '../contexts/theme';
 import Header from './Header';
