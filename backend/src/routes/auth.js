@@ -219,7 +219,7 @@ const validatePassword = (req, res, next) => {
   next();
 };
 
-const sanitizeMiddleware = require('../middleware/sanitizer');
+const sanitizeMiddleware = require('../config/sanitizer');
 
 router.use(sanitizeMiddleware);
 

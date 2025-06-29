@@ -88,7 +88,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const sanitizeMiddleware = require('./middleware/sanitizer');
+const sanitizeMiddleware = require('./config/sanitizer');
 app.use(sanitizeMiddleware);
 console.log('Antes do connectDB');
 
