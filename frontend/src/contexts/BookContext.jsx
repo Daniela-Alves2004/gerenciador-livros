@@ -156,7 +156,6 @@ export const BookProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
-        // Limpar dados possivelmente corrompidos
         localStorage.removeItem('user');
         localStorage.removeItem('token');
       }

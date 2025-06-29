@@ -7,7 +7,6 @@ class User extends Model {
     return bcrypt.compare(candidatePassword, this.password);
   }
 }
-
 User.init({
   name: {
     type: DataTypes.STRING,

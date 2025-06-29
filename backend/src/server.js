@@ -12,7 +12,6 @@ const { connectDB, closeDB, healthCheck, getPoolStats } = require('./config/data
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
-// const bookRoutes = require('./routes/books'); // Removido pois não existe ou não é necessário
 
 console.log('Iniciando servidor...');
 const app = express();
@@ -126,7 +125,6 @@ app.use('/api/', limiter);
 app.use(morgan('combined'));
 
 app.use('/api/auth', authRoutes);
-// app.use('/api/books', bookRoutes); // Removido pois não existe ou não é necessário
 
 app.get('/api/health', (req, res) => {
   res.ok({ status: 'online', timestamp: new Date() }, 'API está funcionando corretamente');

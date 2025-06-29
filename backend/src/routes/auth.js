@@ -148,7 +148,6 @@ const validateFields = (requiredFields) => {
     next();
   };
 };
-
 const validateEmail = (req, res, next) => {
   const { email } = req.body;
   if (!email || typeof email !== 'string') {
@@ -178,7 +177,6 @@ const validateEmail = (req, res, next) => {
 
   next();
 };
-
 const validatePassword = (req, res, next) => {
   const { password } = req.body;
   
@@ -223,7 +221,6 @@ const validatePassword = (req, res, next) => {
 
 const sanitizeMiddleware = require('../middleware/sanitizer');
 
-// Aplicar middleware de sanitização antes das rotas
 router.use(sanitizeMiddleware);
 
 router.post('/login', validateFields(['email', 'password']), validateEmail, validatePassword, async (req, res) => {
