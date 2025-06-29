@@ -84,6 +84,14 @@ const Header = ({ activeTab, onTabChange }) => {
                 iconPosition="start"
                 value="search" 
               />
+              {!state.isAuthenticated && (
+                <Tab 
+                  label="Login" 
+                  icon={<LoginIcon />} 
+                  iconPosition="start"
+                  value="login" 
+                />
+              )}
               {state.isAuthenticated && (
                 <>
                   <Tab 

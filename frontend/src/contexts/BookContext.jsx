@@ -129,23 +129,36 @@ export const BookProvider = ({ children }) => {
 
   useEffect(() => {
     const checkAuth = () => {
-      const savedUser = localStorage.getItem('user');
-      const savedToken = localStorage.getItem('token');
-      
-      if (savedUser && savedToken) {
-        dispatch({ 
-          type: ActionTypes.SET_USER, 
-          payload: JSON.parse(savedUser) 
-        });
-
-        fetchUserCollection(JSON.parse(savedUser).id)
-          .then(collection => {
-            dispatch({
-              type: ActionTypes.SET_COLLECTION,
-              payload: collection
+      try {
+        const savedUser = localStorage.getItem('user');
+        const savedToken = localStorage.getItem('token');
+        
+        if (savedUser && savedToken) {
+          const parsedUser = JSON.parse(savedUser);
+          
+          if (parsedUser && parsedUser.id) {
+            dispatch({ 
+              type: ActionTypes.SET_USER, 
+              payload: parsedUser 
             });
-          })
-          .catch(err => console.error('Erro', err));
+
+            fetchUserCollection(parsedUser.id)
+              .then(collection => {
+                if (collection) {
+                  dispatch({
+                    type: ActionTypes.SET_COLLECTION,
+                    payload: collection
+                  });
+                }
+              })
+              .catch(err => console.error('Erro ao carregar coleção:', err));
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        // Limpar dados possivelmente corrompidos
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
       }
     };
     

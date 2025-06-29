@@ -22,22 +22,6 @@ export const loginUser = async (email, password) => {
 
       const data = await response.json();
       
-      if (!response.ok) {
-        let errorMessage = 'Falha no login';
-        
-        if (data.message) {
-          errorMessage = data.message;
-        }
-        
-        if (data.errors) {
-          if (typeof data.errors === 'object' && data.errors.field) {
-            errorMessage += `: ${data.errors.details || `Erro no campo ${data.errors.field}`}`;
-          }
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
       const userData = data.data || data;
       
       localStorage.setItem('token', userData.token);
@@ -82,26 +66,8 @@ export const registerUser = async (name, email, password) => {
       });
 
       const data = await response.json();
-      
-      if (!response.ok) {
-        let errorMessage = 'Falha no cadastro';
-        
-        if (data.message) {
-          errorMessage = data.message;
-        }
-        
-        if (data.errors) {
-          if (typeof data.errors === 'object' && data.errors.field) {
-            errorMessage += `: ${data.errors.details || `Erro no campo ${data.errors.field}`}`;
-          } else if (typeof data.errors === 'object') {
-            const errorFields = Object.keys(data.errors).join(', ');
-            errorMessage += `: Problemas nos campos: ${errorFields}`;
-          }
-        }
-        
-        throw new Error(errorMessage);
-      }
-
+      console.log('Resposta do servidor:', data);
+     
       const userData = data.data || data;
       
       localStorage.setItem('token', userData.token);

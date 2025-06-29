@@ -17,7 +17,8 @@ import { ActionTypes } from '../contexts/BookContext';
 
 const Login = () => {
   const { state, dispatch } = useBookContext();
-  const [isLogin, setIsLogin] = useState(true);  const [email, setEmail] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -26,67 +27,63 @@ const Login = () => {
   const [passwordError, setPasswordError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  const validatePassword = (password) => {
+    if (!password) return 'Senha é obrigatória';
+    if (password.length < 8) return 'A senha deve ter pelo menos 8 caracteres';
+    if (!/(?=.*[a-z])/.test(password)) return 'A senha deve conter pelo menos uma letra minúscula';
+    if (!/(?=.*[A-Z])/.test(password)) return 'A senha deve conter pelo menos uma letra maiúscula';
+    if (!/(?=.*\d)/.test(password)) return 'A senha deve conter pelo menos um número';
+    return '';
+  };
+
   const validateEmail = (email) => {
-    return email.includes('@');
+    if (!email) return 'Email é obrigatório';
+    if (!email.includes('@') || !email.includes('.')) return 'Email inválido. Exemplo: seu.nome@email.com';
+    return '';
+  };
+
+  const validateName = (name) => {
+    if (!name) return 'Nome é obrigatório';
+    if (name.length < 3) return 'O nome deve ter pelo menos 3 caracteres';
+    if (!/^[a-zA-ZÀ-ÿ\s]*$/.test(name)) return 'O nome deve conter apenas letras e espaços';
+    return '';
   };
 
   const handleEmailChange = (e) => {
     const value = e.target.value;
     setEmail(value);
-    if (value && !validateEmail(value)) {
-      setEmailError('Email inválido. Deve conter @');
-    } else {
-      setEmailError('');
-    }
+    setEmailError(validateEmail(value));
   };
 
   const handleNameChange = (e) => {
     const value = e.target.value;
     setName(value);
-    if (!value && !isLogin) {
-      setNameError('Nome é obrigatório');
-    } else {
-      setNameError('');
+    if (!isLogin) {
+      setNameError(validateName(value));
     }
   };
 
   const handlePasswordChange = (e) => {
     const value = e.target.value;
     setPassword(value);
-    if (!value) {
-      setPasswordError('Senha é obrigatória');
-    } else {
-      setPasswordError('');
-    }
+    setPasswordError(validatePassword(value));
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setEmailError('');
-    setPasswordError('');
-    setNameError('');
     
-    let hasError = false;
+    const emailValidation = validateEmail(email);
+    const passwordValidation = validatePassword(password);
+    const nameValidation = !isLogin ? validateName(name) : '';
 
-    if (!email) {
-      setEmailError('Email é obrigatório');
-      hasError = true;
-    } else if (!validateEmail(email)) {
-      setEmailError('Email inválido. Deve conter @');
-      hasError = true;
+    setEmailError(emailValidation);
+    setPasswordError(passwordValidation);
+    setNameError(nameValidation);
+
+    if (emailValidation || passwordValidation || nameValidation) {
+      return;
     }
-
-    if (!password) {
-      setPasswordError('Senha é obrigatória');
-      hasError = true;
-    }
-
-    if (!isLogin && !name) {
-      setNameError('Nome é obrigatório');
-      hasError = true;
-    }
-
-    if (hasError) return;
 
     try {
       dispatch({ type: ActionTypes.SET_LOADING, payload: true });
@@ -99,19 +96,30 @@ const Login = () => {
         dispatch({ type: ActionTypes.SET_USER, payload: userData });
       }
       
-      dispatch({ type: ActionTypes.SET_LOADING, payload: false });    } catch (error) {
+      dispatch({ type: ActionTypes.SET_LOADING, payload: false });
+    } catch (error) {
       dispatch({ type: ActionTypes.SET_LOADING, payload: false });
       
       const errorMessage = error.message || 'Ocorreu um erro. Por favor, tente novamente.';
       
       if (errorMessage.toLowerCase().includes('email')) {
-        setEmailError(errorMessage);
-      } else if (errorMessage.toLowerCase().includes('senha') || errorMessage.toLowerCase().includes('password')) {
-        setPasswordError(errorMessage);
+        if (errorMessage.includes('já cadastrado')) {
+          setEmailError('Este email já está em uso. Por favor, use outro email ou faça login com sua conta existente.');
+        } else {
+          setEmailError('Email inválido. Use um email válido como exemplo@email.com');
+        }
+      } else if (errorMessage.toLowerCase().includes('senha')) {
+        if (isLogin) {
+          setPasswordError('Senha incorreta. Verifique se digitou corretamente.');
+        } else {
+          setPasswordError('A senha deve ter pelo menos 6 caracteres, uma letra maiúscula, uma minúscula e um número.');
+        }
       } else if (!isLogin && errorMessage.toLowerCase().includes('nome')) {
-        setNameError(errorMessage);
+        setNameError('Nome inválido. Use apenas letras e espaços, com pelo menos 3 caracteres.');
       } else {
-        setError(errorMessage);
+        setError(isLogin ? 
+          'Não foi possível fazer login. Verifique suas credenciais e tente novamente.' : 
+          'Erro ao criar conta. Por favor, verifique se todos os campos estão preenchidos corretamente.');
       }
     }
   };
@@ -119,6 +127,7 @@ const Login = () => {
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
   };
+
   const switchMode = () => {
     setIsLogin(!isLogin);
     setError('');
@@ -145,7 +154,9 @@ const Login = () => {
           </Alert>
         )}
         
-        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>          {!isLogin && (            <TextField
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+          {!isLogin && (
+            <TextField
               margin="normal"
               required
               fullWidth
@@ -175,7 +186,7 @@ const Login = () => {
               placeholder="Digite seu nome completo"
             />
           )}
-            <TextField
+          <TextField
             margin="normal"
             required
             fullWidth

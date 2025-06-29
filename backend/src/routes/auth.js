@@ -1,11 +1,8 @@
 const express = require('express');
 const { Op } = require('sequelize');
 const User = require('../models/User');
-const { generateToken, generatePasswordResetToken, verifyToken } = require('../config/auth');
-const { setupLogger } = require('../config/logger');
+const { generateToken, verifyToken } = require('../config/auth');
 const router = express.Router();
-
-const logger = setupLogger();
 
 const invalidatedTokens = new Set();
 
@@ -13,7 +10,7 @@ const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      logger.warn(`Tentativa de acesso sem token: ${req.originalUrl}`);
+      console.warn(`Tentativa de acesso sem token: ${req.originalUrl}`);
       return res.status(401).json({
         success: false,
         message: 'Token não fornecido',
@@ -26,7 +23,7 @@ const authMiddleware = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
     if (!token) {
-      logger.warn(`Token não encontrado: ${req.originalUrl}`);
+      console.warn(`Token não encontrado: ${req.originalUrl}`);
       return res.status(401).json({
         success: false,
         message: 'Token não fornecido',
@@ -38,7 +35,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     if (invalidatedTokens.has(token)) {
-      logger.warn(`Tentativa de uso de token invalidado: ${req.originalUrl}`);
+      console.warn(`Tentativa de uso de token invalidado: ${req.originalUrl}`);
       return res.status(401).json({
         success: false,
         message: 'Token invalidado',
@@ -51,7 +48,7 @@ const authMiddleware = async (req, res, next) => {
 
     const decoded = verifyToken(token);
     if (!decoded) {
-      logger.warn(`Token inválido ou expirado: ${req.originalUrl}`);
+      console.warn(`Token inválido ou expirado: ${req.originalUrl}`);
       return res.status(401).json({
         success: false,
         message: 'Token inválido ou expirado',
@@ -64,7 +61,7 @@ const authMiddleware = async (req, res, next) => {
 
     const user = await User.findByPk(decoded.id);
     if (!user) {
-      logger.warn(`Usuário não encontrado para token: ${decoded.id}`);
+      console.warn(`Usuário não encontrado para token: ${decoded.id}`);
       return res.status(401).json({
         success: false,
         message: 'Usuário não encontrado',
@@ -76,7 +73,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     if (!user.active) {
-      logger.warn(`Tentativa de acesso com conta inativa: ${user.id}`);
+      console.warn(`Tentativa de acesso com conta inativa: ${user.id}`);
       return res.status(401).json({
         success: false,
         message: 'Conta inativa',
@@ -88,7 +85,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     if (decoded.iat && user.changedPasswordAfter(decoded.iat)) {
-      logger.warn(`Token emitido antes da troca de senha: ${user.id}`);
+      console.warn(`Token emitido antes da troca de senha: ${user.id}`);
       return res.status(401).json({
         success: false,
         message: 'Senha alterada após emissão do token',
@@ -103,7 +100,7 @@ const authMiddleware = async (req, res, next) => {
     req.token = token;
     next();
   } catch (error) {
-    logger.error(`Erro na autenticação: ${error.message}`, { stack: error.stack });
+    console.error(`Erro na autenticação: ${error.message}`, { stack: error.stack });
     res.status(500).json({
       success: false,
       message: 'Falha na autenticação',
@@ -136,7 +133,7 @@ const validateFields = (requiredFields) => {
     });
 
     if (missingFields.length > 0) {
-      logger.warn(`Campos obrigatórios ausentes: ${missingFields.join(', ')}`);
+      console.warn(`Campos obrigatórios ausentes: ${missingFields.join(', ')}`);
       return res.status(400).json({
         success: false,
         message: 'Campos obrigatórios não preenchidos',
@@ -224,207 +221,53 @@ const validatePassword = (req, res, next) => {
   next();
 };
 
-const sanitizeBody = (req, res, next) => {
-  if (req.body) {
-    req.body = sanitizeObject(req.body);
+const sanitizeMiddleware = require('../middleware/sanitizer');
+
+// Aplicar middleware de sanitização antes das rotas
+router.use(sanitizeMiddleware);
+
+router.post('/login', validateFields(['email', 'password']), validateEmail, validatePassword, async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email e senha são obrigatórios' });
   }
-  next();
-};
-
-const sanitizeObject = (obj) => {
-  if (typeof obj !== 'object' || obj === null) {
-    return obj;
+  try {
+    const user = await User.scope('withPassword').findOne({ where: { email } });
+    if (!user) return res.status(401).json({ message: 'Email ou senha inválidos' });
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) return res.status(401).json({ message: 'Email ou senha inválidos' });
+    const token = generateToken(user.id);
+    res.json({
+      user: { id: user.id, name: user.name, email: user.email },
+      token
+    });
+  } catch (e) {
+    res.status(500).json({ message: 'Erro no login' });
   }
+});
 
-  const sanitized = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') {
-      sanitized[key] = value.trim()
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/javascript:/gi, '')
-        .replace(/on\w+\s*=/gi, '');
-    } else if (typeof value === 'object' && value !== null) {
-      sanitized[key] = sanitizeObject(value);
-    } else {
-      sanitized[key] = value;
-    }
+router.post('/register', validateFields(['name', 'email', 'password']), validateEmail, validatePassword, async (req, res) => {
+  const { name, email, password } = req.body;
+  try {
+    const existingUser = await User.findOne({ where: { email: email.toLowerCase() } });
+    if (existingUser) return res.status(409).json({ message: 'Email já cadastrado' });
+    const user = await User.create({ name: name.trim(), email: email.toLowerCase(), password });
+    const token = generateToken(user.id);
+    res.status(201).json({
+      user: { id: user.id, name: user.name, email: user.email },
+      token
+    });
+  } catch (e) {
+    res.status(500).json({ message: 'Erro no registro' });
   }
-  return sanitized;
-};
-
-router.use(sanitizeBody);
-
-router.post('/login', 
-  validateFields(['email', 'password']), 
-  validateEmail,
-  async (req, res) => {
-    try {
-      const { email, password } = req.body;
-
-      const user = await User.scope('withPassword').findOne({ 
-        where: { email: email.toLowerCase() } 
-      });
-      
-      if (!user) {
-        logger.warn(`Tentativa de login com email inexistente: ${email}`);
-        return res.status(401).json({
-          success: false,
-          message: 'Credenciais inválidas',
-          errors: {
-            auth: true,
-            details: 'Email ou senha incorretos'
-          }
-        });
-      }
-
-      if (user.isLocked()) {
-        logger.warn(`Tentativa de login em conta bloqueada: ${email}`);
-        return res.status(401).json({
-          success: false,
-          message: 'Conta temporariamente bloqueada devido a múltiplas tentativas de login. Tente novamente mais tarde.',
-          errors: {
-            auth: true,
-            details: 'Conta bloqueada temporariamente'
-          }
-        });
-      }
-
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-        await user.registerFailedLogin();
-        
-        logger.warn(`Login falho - senha incorreta: ${email} (Tentativas: ${user.loginAttempts})`);
-        
-        if (user.loginAttempts >= 5) {
-          return res.status(401).json({
-            success: false,
-            message: 'Conta temporariamente bloqueada devido a múltiplas tentativas de login. Tente novamente mais tarde.',
-            errors: {
-              auth: true,
-              details: 'Conta bloqueada temporariamente'
-            }
-          });
-        }
-        
-        return res.status(401).json({
-          success: false,
-          message: 'Credenciais inválidas',
-          errors: {
-            auth: true,
-            details: 'Email ou senha incorretos'
-          }
-        });
-      }
-
-      await user.resetLoginAttempts();
-
-      const token = generateToken(user.id);
-      logger.info(`Login realizado com sucesso: ${email}`);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Login realizado com sucesso',
-        data: {
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.email
-          },
-          token
-        }
-      });
-    } catch (error) {
-      logger.error(`Erro no login: ${error.message}`, { stack: error.stack });
-      res.status(500).json({
-        success: false,
-        message: 'Erro interno do servidor',
-        errors: {
-          server: true,
-          details: 'Ocorreu um erro interno ao processar o login'
-        }
-      });
-    }
-  }
-);
-
-router.post('/register', 
-  validateFields(['email', 'password', 'name']),
-  validateEmail,
-  validatePassword,
-  async (req, res) => {
-    try {
-      const { email, password, name } = req.body;
-      
-      if (!name || typeof name !== 'string' || name.trim().length < 2) {
-        return res.status(400).json({
-          success: false,
-          message: 'Nome inválido',
-          errors: {
-            validation: true,
-            field: 'name',
-            details: 'Nome deve ter pelo menos 2 caracteres'
-          }
-        });
-      }
-
-      const existingUser = await User.findOne({ 
-        where: { email: email.toLowerCase() } 
-      });
-      
-      if (existingUser) {
-        logger.warn(`Tentativa de registro com email já existente: ${email}`);
-        return res.status(409).json({
-          success: false,
-          message: 'Email já está em uso',
-          errors: {
-            validation: true,
-            field: 'email',
-            details: 'Este email já está registrado no sistema'
-          }
-        });
-      }
-
-      const user = await User.create({
-        name: name.trim(),
-        email: email.toLowerCase(),
-        password
-      });
-
-      const token = generateToken(user.id);
-      logger.info(`Usuário registrado com sucesso: ${email}`);
-      
-      res.status(201).json({
-        success: true,
-        message: 'Usuário registrado com sucesso',
-        data: {
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.email
-          },
-          token
-        }
-      });
-    } catch (error) {
-      logger.error(`Erro no registro: ${error.message}`, { stack: error.stack });
-      res.status(500).json({
-        success: false,
-        message: 'Erro interno do servidor',
-        errors: {
-          server: true,
-          details: 'Ocorreu um erro interno ao registrar o usuário'
-        }
-      });
-    }
-  }
-);
+});
 
 router.post('/logout', authMiddleware, async (req, res) => {
   try {
     const token = req.token;
     
     if (invalidateToken(token)) {
-      logger.info(`Logout realizado com sucesso: ${req.user.email}`);
+      console.info(`Logout realizado com sucesso: ${req.user.email}`);
       res.status(200).json({
         success: true,
         message: 'Logout realizado com sucesso',
@@ -441,7 +284,7 @@ router.post('/logout', authMiddleware, async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error(`Erro no logout: ${error.message}`, { stack: error.stack });
+    console.error(`Erro no logout: ${error.message}`, { stack: error.stack });
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
@@ -467,7 +310,7 @@ router.get('/verify', authMiddleware, async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error(`Erro na verificação de token: ${error.message}`, { stack: error.stack });
+    console.error(`Erro na verificação de token: ${error.message}`, { stack: error.stack });
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',

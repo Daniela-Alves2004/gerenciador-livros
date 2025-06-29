@@ -9,16 +9,14 @@ const fs = require('fs');
 const https = require('https');
 const path = require('path');
 const { connectDB, closeDB, healthCheck, getPoolStats } = require('./config/database');
-const { setupLogger } = require('./config/logger');
 require('dotenv').config();
 
-const logger = setupLogger();
-
 const authRoutes = require('./routes/auth');
-const bookRoutes = require('./routes/books');
+// const bookRoutes = require('./routes/books'); // Removido pois não existe ou não é necessário
 
+console.log('Iniciando servidor...');
 const app = express();
-
+app.use(express.json());
 app.use((req, res, next) => {
   res.ok = (data, message = 'Operação realizada com sucesso') => {
     res.status(200).json({
@@ -91,42 +89,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  const sanitizeString = (str) => {
-    if (typeof str !== 'string') return str;
-    return str.trim()
-      .replace(/[<>]/g, '')
-      .replace(/javascript:/gi, '')
-      .replace(/on\w+\s*=/gi, '');
-  };
-
-  const sanitizeObject = (obj) => {
-    if (typeof obj !== 'object' || obj === null) {
-      return obj;
-    }
-
-    const sanitized = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === 'string') {
-        sanitized[key] = sanitizeString(value);
-      } else if (typeof value === 'object' && value !== null) {
-        sanitized[key] = sanitizeObject(value);
-      } else {
-        sanitized[key] = value;
-      }
-    }
-    return sanitized;
-  };
-
-  if (req.body) req.body = sanitizeObject(req.body);
-  if (req.query) req.query = sanitizeObject(req.query);
-  if (req.params) req.params = sanitizeObject(req.params);
-
-  next();
-});
+const sanitizeMiddleware = require('./middleware/sanitizer');
+app.use(sanitizeMiddleware);
+console.log('Antes do connectDB');
 
 connectDB();
-
+console.log('Depois do connectDB');
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
   max: 100, 
@@ -158,7 +126,7 @@ app.use('/api/', limiter);
 app.use(morgan('combined'));
 
 app.use('/api/auth', authRoutes);
-app.use('/api/books', bookRoutes);
+// app.use('/api/books', bookRoutes); // Removido pois não existe ou não é necessário
 
 app.get('/api/health', (req, res) => {
   res.ok({ status: 'online', timestamp: new Date() }, 'API está funcionando corretamente');
@@ -179,7 +147,7 @@ app.get('/api/database/stats', async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error(`Erro ao obter estatísticas do banco: ${error.message}`);
+    console.error(`Erro ao obter estatísticas do banco: ${error.message}`);
     res.status(500).json({
       success: false,
       message: 'Erro ao obter estatísticas do banco',
@@ -192,7 +160,7 @@ app.get('/api/database/stats', async (req, res) => {
 });
 
 app.use((req, res) => {
-  logger.warn(`Rota não encontrada: ${req.originalUrl}`);
+  console.warn(`Rota não encontrada: ${req.originalUrl}`);
   res.status(404).json({
     success: false,
     message: 'Rota não encontrada',
@@ -205,7 +173,7 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   if (err.name === 'SequelizeDatabaseError') {
-    logger.error(`Erro de banco de dados SQLite: ${err.message}`, { 
+    console.error(`Erro de banco de dados SQLite: ${err.message}`, { 
       stack: err.stack,
       sql: err.sql || 'SQL não disponível'
     });
@@ -225,7 +193,7 @@ app.use((err, req, res, next) => {
       message: e.message
     }));
     
-    logger.warn('Erro de validação:', { errors: validationErrors });
+    console.warn('Erro de validação:', { errors: validationErrors });
     return res.status(400).json({
       success: false,
       message: 'Erro de validação',
@@ -238,7 +206,7 @@ app.use((err, req, res, next) => {
 
   if (err.name === 'SequelizeUniqueConstraintError') {
     const field = err.errors[0]?.path || 'campo';
-    logger.warn(`Violação de unicidade: ${field}`);
+    console.warn(`Violação de unicidade: ${field}`);
     return res.status(409).json({
       success: false,
       message: `O valor fornecido para ${field} já está em uso`,
@@ -250,7 +218,7 @@ app.use((err, req, res, next) => {
     });
   }
   
-  logger.error(`Erro: ${err.message}, Stack: ${err.stack}`);
+  console.error(`Erro: ${err.message}, Stack: ${err.stack}`);
   res.status(500).json({
     success: false,
     message: 'Erro interno do servidor',
@@ -264,15 +232,13 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 
 process.on('SIGTERM', async () => {
-  logger.info('SIGTERM recebido, encerrando servidor...');
+  console.info('SIGTERM recebido, encerrando servidor...');
   await closeDB();
-  process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  logger.info('SIGINT recebido, encerrando servidor...');
+  console.info('SIGINT recebido, encerrando servidor...');
   await closeDB();
-  process.exit(0);
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -283,17 +249,17 @@ if (process.env.NODE_ENV === 'production') {
     
     const httpsServer = https.createServer(credentials, app);
     httpsServer.listen(PORT, () => {
-      logger.info(`Servidor HTTPS rodando na porta ${PORT}`);
+      console.info(`Servidor HTTPS rodando na porta ${PORT}`);
     });
   } catch (error) {
-    logger.error(`Erro ao iniciar servidor HTTPS: ${error.message}`);
+    console.error(`Erro ao iniciar servidor HTTPS: ${error.message}`);
     app.listen(PORT, () => {
-      logger.warn(`Servidor HTTP rodando na porta ${PORT} (fallback)`);
+      console.warn(`Servidor HTTP rodando na porta ${PORT} (fallback)`);
     });
   }
 } else {
   app.listen(PORT, () => {
-    logger.info(`Servidor HTTP rodando na porta ${PORT} (desenvolvimento)`);
+    console.info(`Servidor HTTP rodando na porta ${PORT}`);
   });
 }
 
